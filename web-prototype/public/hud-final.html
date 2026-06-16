@@ -5,580 +5,538 @@
 <title>Midnight Return — HUD</title>
 <style>
 :root {
-  --gold-hi:   #f0d060;
-  --gold-mid:  #c8a030;
-  --gold-lo:   #6a4010;
-  --gold-dark: #3a2000;
-  --iron:      #1a1208;
-  --iron-mid:  #241808;
-  --iron-lo:   #0e0904;
-  --hp-hi:     #ff7070;
-  --hp-mid:    #cc1818;
-  --hp-lo:     #880808;
-  --mp-hi:     #80b0ff;
-  --mp-mid:    #2255dd;
-  --mp-lo:     #0d2a99;
+  --g0:#f8e870; --g1:#e8cc44; --g2:#c8a020; --g3:#8b6010;
+  --g4:#5a3c08; --g5:#2e1e04;
+  --iron-a:#0e0b05; --iron-b:#181208; --iron-c:#241808;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
+*{margin:0;padding:0;box-sizing:border-box;}
 
-body {
-  background: #020105;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  font-family: 'Palatino Linotype', Palatino, Georgia, serif;
+body{
+  background:#000;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  font-family:'Palatino Linotype',Palatino,Georgia,serif;
 }
 
-/* ═══════════════════════════════════════
-   VIEWPORT
-═══════════════════════════════════════ */
-.viewport {
-  width: 960px;
-  height: 540px;
-  position: relative;
-  overflow: hidden;
+/* ──────────── VIEWPORT ──────────── */
+.vp{
+  width:960px;height:540px;position:relative;overflow:hidden;
   background:
-    radial-gradient(ellipse at 25% 70%, rgba(80,30,0,.35) 0%, transparent 45%),
-    radial-gradient(ellipse at 80% 20%, rgba(30,0,60,.3) 0%, transparent 45%),
-    linear-gradient(180deg, #0c0812 0%, #14101c 55%, #08060e 100%);
+    radial-gradient(ellipse at 25% 68%,rgba(65,25,0,.42) 0%,transparent 42%),
+    radial-gradient(ellipse at 80% 22%,rgba(24,0,50,.38) 0%,transparent 42%),
+    linear-gradient(180deg,#0a0710 0%,#110f1a 55%,#080510 100%);
 }
-
-/* stone-tile hint */
-.viewport::before {
-  content:'';
-  position:absolute;
-  inset:0;
+.vp::before{  /* stone tiles */
+  content:'';position:absolute;inset:0;pointer-events:none;
   background-image:
-    repeating-linear-gradient(90deg,  rgba(255,255,255,.008) 0,rgba(255,255,255,.008) 1px,transparent 1px,transparent 80px),
-    repeating-linear-gradient(0deg,   rgba(255,255,255,.008) 0,rgba(255,255,255,.008) 1px,transparent 1px,transparent 60px);
-  pointer-events:none;
+    repeating-linear-gradient(90deg,rgba(255,255,255,.007) 0,rgba(255,255,255,.007) 1px,transparent 1px,transparent 80px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.007) 0,rgba(255,255,255,.007) 1px,transparent 1px,transparent 60px);
 }
-
-/* torch glow (top-right) */
-.viewport::after {
-  content:'';
-  position:absolute;
-  top:0; right:80px;
-  width:220px; height:180px;
-  background: radial-gradient(ellipse at 50% 0%, rgba(255,110,15,.18) 0%, transparent 70%);
+.vp::after{  /* torch glow */
+  content:'';position:absolute;top:0;right:90px;width:200px;height:170px;
+  background:radial-gradient(ellipse at 50% 0%,rgba(255,105,14,.17) 0%,transparent 70%);
   pointer-events:none;
 }
 
 /* flash overlays */
-.ov { position:absolute; inset:0; pointer-events:none; z-index:90; opacity:0; }
-.ov.dmg.go  { animation: flashDmg  .45s ease-out forwards; }
-.ov.heal.go { animation: flashHeal .55s ease-out forwards; }
-.ov.lvl.go  { animation: flashLvl 1.8s ease-out forwards; }
+.ov{position:absolute;inset:0;pointer-events:none;z-index:90;opacity:0;}
+.ov.dmg.go  {animation:fD .5s ease-out forwards;}
+.ov.heal.go {animation:fH .6s ease-out forwards;}
+.ov.lvl.go  {animation:fL 2s  ease-out forwards;}
+@keyframes fD{0%{opacity:1;background:rgba(200,0,0,.42)}   100%{opacity:0;background:rgba(200,0,0,0)}}
+@keyframes fH{0%{opacity:1;background:rgba(30,200,80,.3)}  100%{opacity:0;background:rgba(30,200,80,0)}}
+@keyframes fL{0%{opacity:1;background:radial-gradient(ellipse at 50% 100%,rgba(255,200,40,.58) 0%,transparent 60%)}
+              65%{opacity:.6}100%{opacity:0}}
 
-@keyframes flashDmg  { 0%{opacity:1;background:rgba(200,0,0,.38)}  100%{opacity:0;background:rgba(200,0,0,0)} }
-@keyframes flashHeal { 0%{opacity:1;background:rgba(30,220,80,.28)} 100%{opacity:0;background:rgba(30,220,80,0)} }
-@keyframes flashLvl  { 0%{opacity:1;background:radial-gradient(ellipse at 50% 100%,rgba(255,210,40,.5) 0%,transparent 65%)}
-                       70%{opacity:.6} 100%{opacity:0} }
+.vig{position:absolute;inset:0;pointer-events:none;z-index:89;
+     box-shadow:inset 0 0 100px rgba(0,0,0,.6);transition:box-shadow .4s;}
+.vig.danger{animation:vP 1.1s ease-in-out infinite;}
+@keyframes vP{0%,100%{box-shadow:inset 0 0 100px rgba(0,0,0,.6)}
+              50%{box-shadow:inset 0 0 100px rgba(175,0,0,.52),inset 0 0 52px rgba(175,0,0,.22)}}
 
-/* danger vignette */
-.vignette {
-  position:absolute; inset:0; pointer-events:none; z-index:89;
-  box-shadow: inset 0 0 90px rgba(0,0,0,.55);
-  transition: box-shadow .4s;
+/* ──────────── LV / EXP  top-left ──────────── */
+.lv-panel{position:absolute;top:12px;left:14px;display:flex;flex-direction:column;gap:5px;}
+.lv-box{
+  display:inline-flex;align-items:center;gap:7px;
+  background:linear-gradient(135deg,#1e1404,#0d0a02);
+  border:1px solid var(--g2);padding:4px 12px;
+  box-shadow:0 0 12px rgba(200,150,30,.18),inset 0 1px 0 rgba(200,150,30,.1);
 }
-.vignette.danger { animation: vigPulse 1.1s ease-in-out infinite; }
-@keyframes vigPulse {
-  0%,100% { box-shadow: inset 0 0 90px rgba(0,0,0,.55); }
-  50%     { box-shadow: inset 0 0 90px rgba(180,0,0,.45), inset 0 0 40px rgba(180,0,0,.2); }
-}
+.lv-lbl{font-size:9px;letter-spacing:2px;color:var(--g4);}
+.lv-num{font-size:19px;font-weight:700;color:#ffe890;text-shadow:0 0 8px rgba(255,220,120,.55);}
+.exp-row{display:flex;align-items:center;gap:5px;}
+.exp-lbl{font-size:9px;letter-spacing:1px;color:var(--g4);}
+.exp-trk{width:106px;height:5px;background:#070402;border:1px solid #3a2400;box-shadow:inset 0 1px 3px rgba(0,0,0,.8);}
+.exp-f{height:100%;background:linear-gradient(90deg,var(--g2),var(--g1));box-shadow:0 0 5px rgba(200,150,30,.7);transition:width .5s;}
 
-/* ═══════════════════════════════════════
-   LEVEL / EXP  (top-left)
-═══════════════════════════════════════ */
-.lv-panel {
-  position:absolute;
-  top:12px; left:14px;
-  display:flex; flex-direction:column; gap:5px;
-}
-.lv-box {
-  display:inline-flex; align-items:center; gap:7px;
-  background: linear-gradient(135deg,#1e1404,#0d0a02);
-  border:1px solid var(--gold-mid);
-  padding:4px 12px;
-  box-shadow: 0 0 12px rgba(200,150,30,.18), inset 0 1px 0 rgba(200,150,30,.1);
-}
-.lv-label { font-size:9px; letter-spacing:2px; color:var(--gold-lo); }
-.lv-num   { font-size:19px; font-weight:700; color:#ffe890;
-             text-shadow:0 0 8px rgba(255,220,120,.55); }
-.exp-row  { display:flex; align-items:center; gap:5px; }
-.exp-lbl  { font-size:9px; letter-spacing:1px; color:var(--gold-lo); }
-.exp-track{
-  width:106px; height:5px;
-  background:#070402; border:1px solid #3a2400;
-  box-shadow:inset 0 1px 3px rgba(0,0,0,.8);
-}
-.exp-fill {
-  height:100%;
-  background:linear-gradient(90deg,var(--gold-mid),var(--gold-hi));
-  box-shadow:0 0 5px rgba(200,150,30,.7);
-  transition:width .5s ease;
-}
+/* ──────────── BOSS BAR  top-center ──────────── */
+.boss-p{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:380px;opacity:0;transition:opacity .6s;pointer-events:none;}
+.boss-p.on{opacity:1;pointer-events:all;}
+.boss-nm{text-align:center;font-size:13px;letter-spacing:3px;color:#cc2244;text-transform:uppercase;margin-bottom:5px;text-shadow:0 0 14px rgba(200,30,60,.9),0 0 4px #000;}
+.boss-trk{height:12px;background:#080009;border:2px solid #661133;box-shadow:0 0 14px rgba(180,20,50,.32),inset 0 2px 5px rgba(0,0,0,.9);overflow:hidden;}
+.boss-f{height:100%;background:linear-gradient(90deg,#550011,#cc2244 65%,#ff4466 88%,#ff88aa 100%);box-shadow:0 0 10px rgba(200,30,60,.6),inset 0 1px 0 rgba(255,100,140,.3);transition:width .5s;}
 
-/* ═══════════════════════════════════════
-   BOSS BAR  (top-center)
-═══════════════════════════════════════ */
-.boss-panel {
-  position:absolute;
-  top:12px; left:50%; transform:translateX(-50%);
-  width:380px;
-  opacity:0; transition:opacity .6s;
-  pointer-events:none;
-}
-.boss-panel.on { opacity:1; pointer-events:all; }
-.boss-name {
-  text-align:center; font-size:13px; letter-spacing:3px;
-  color:#cc2244; text-transform:uppercase; margin-bottom:5px;
-  text-shadow:0 0 14px rgba(200,30,60,.9), 0 0 4px #000;
-}
-.boss-track {
-  height:12px; background:#080009;
-  border:2px solid #661133;
-  box-shadow:0 0 14px rgba(180,20,50,.32), inset 0 2px 5px rgba(0,0,0,.9);
-  overflow:hidden;
-}
-.boss-fill {
-  height:100%;
-  background:linear-gradient(90deg,#550011 0%,#cc2244 65%,#ff4466 88%,#ff88aa 100%);
-  box-shadow:0 0 10px rgba(200,30,60,.6), inset 0 1px 0 rgba(255,100,140,.3);
-  transition:width .5s ease;
-}
+/* ──────────── NOTIFICATIONS ──────────── */
+.narea{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;z-index:95;}
+.notif{background:rgba(8,5,1,.93);border:1px solid var(--g2);padding:8px 28px;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#ffe890;text-shadow:0 0 8px rgba(255,220,120,.6);box-shadow:0 0 22px rgba(200,150,30,.28);animation:nU 2.6s ease-out forwards;}
+.notif.lu{border-color:var(--g0);font-size:20px;text-shadow:0 0 14px rgba(255,210,50,.9);box-shadow:0 0 36px rgba(255,200,40,.38);}
+@keyframes nU{0%{opacity:0;transform:translateY(12px)}14%{opacity:1;transform:translateY(0)}70%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-22px)}}
 
-/* ═══════════════════════════════════════
-   NOTIFICATIONS  (center)
-═══════════════════════════════════════ */
-.notif-area {
-  position:absolute;
-  top:50%; left:50%; transform:translate(-50%,-50%);
-  display:flex; flex-direction:column; align-items:center; gap:8px;
-  pointer-events:none; z-index:95;
+/* ──────────── PORTRAIT ORB  bottom-left ──────────── */
+.port-wrap{position:absolute;bottom:18px;left:16px;display:flex;flex-direction:column;align-items:center;gap:7px;}
+.port{width:80px;height:80px;position:relative;display:flex;align-items:center;justify-content:center;}
+.p-ring{
+  position:absolute;inset:0;border-radius:50%;
+  border:4px solid;border-color:var(--g0) var(--g4) var(--g0) var(--g1);
+  box-shadow:0 0 0 2px #2a1800,0 0 20px rgba(200,150,30,.38),0 0 40px rgba(200,150,30,.12),inset 0 0 16px rgba(0,0,0,.9);
 }
-.notif {
-  background:rgba(8,5,1,.92);
-  border:1px solid var(--gold-mid);
-  padding:8px 28px;
-  font-size:15px; letter-spacing:3px; text-transform:uppercase;
-  color:#ffe890; text-shadow:0 0 8px rgba(255,220,120,.6);
-  box-shadow:0 0 22px rgba(200,150,30,.28);
-  animation:notifUp 2.6s ease-out forwards;
-}
-.notif.lvl-up {
-  border-color:var(--gold-hi); font-size:21px;
-  text-shadow:0 0 14px rgba(255,210,50,.9);
-  box-shadow:0 0 36px rgba(255,200,40,.38);
-}
-@keyframes notifUp {
-  0%  { opacity:0; transform:translateY(12px); }
-  14% { opacity:1; transform:translateY(0);    }
-  70% { opacity:1; transform:translateY(0);    }
-  100%{ opacity:0; transform:translateY(-22px);}
-}
-
-/* ═══════════════════════════════════════
-   PORTRAIT ORB  (bottom-left)
-═══════════════════════════════════════ */
-.portrait-wrap {
-  position:absolute; bottom:14px; left:14px;
-  display:flex; flex-direction:column; align-items:center; gap:7px;
-}
-.portrait {
-  width:78px; height:78px;
-  position:relative;
-  display:flex; align-items:center; justify-content:center;
-}
-.portrait-ring {
-  position:absolute; inset:0; border-radius:50%;
-  border:4px solid;
-  border-color:var(--gold-hi) var(--gold-lo) var(--gold-hi) var(--gold-mid);
-  box-shadow:
-    0 0 0 2px #2a1800,
-    0 0 18px rgba(200,150,30,.35),
-    0 0 36px rgba(200,150,30,.1),
-    inset 0 0 14px rgba(0,0,0,.9);
-}
-.portrait-face {
-  width:60px; height:60px; border-radius:50%;
-  background:radial-gradient(circle at 38% 32%, #2a1800, #110a00 58%, #090500 100%);
+.p-face{
+  width:62px;height:62px;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#2a1800,#110a00 58%,#090500 100%);
   border:2px solid #5a3800;
-  display:flex; align-items:center; justify-content:center;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 0 14px rgba(0,0,0,.9);
 }
-.portrait-face span {
-  font-size:28px; color:var(--gold-mid);
-  text-shadow:0 0 10px rgba(200,150,30,.9), 0 0 22px rgba(200,100,20,.5);
-}
-/* NESW diamond pips */
-.pip {
-  position:absolute;
-  width:9px; height:9px;
-  background:var(--gold-mid);
-  transform:rotate(45deg);
-  box-shadow:0 0 5px rgba(200,150,30,.8);
-}
-.pip.n { top:-2px;    left:50%; margin-left:-4.5px; }
-.pip.s { bottom:-2px; left:50%; margin-left:-4.5px; }
-.pip.e { right:-2px;  top:50%;  margin-top:-4.5px; }
-.pip.w { left:-2px;   top:50%;  margin-top:-4.5px; }
+.p-face span{font-size:28px;color:var(--g2);text-shadow:0 0 10px rgba(200,150,30,.9),0 0 22px rgba(200,100,20,.5);}
+.pip{position:absolute;width:9px;height:9px;background:var(--g2);transform:rotate(45deg);box-shadow:0 0 5px rgba(200,150,30,.8);}
+.pip.n{top:-2px;    left:50%;margin-left:-4.5px;}
+.pip.s{bottom:-2px; left:50%;margin-left:-4.5px;}
+.pip.e{right:-2px;  top:50%; margin-top:-4.5px;}
+.pip.w{left:-2px;   top:50%; margin-top:-4.5px;}
+.lives{display:flex;align-items:center;gap:5px;background:rgba(8,4,1,.88);border:1px solid #5a3800;padding:3px 11px;box-shadow:0 0 8px rgba(0,0,0,.6);}
+.lh{color:#ff2233;font-size:14px;text-shadow:0 0 7px rgba(255,30,40,.9);}
+.ln{font-size:14px;font-weight:700;color:#ffe890;letter-spacing:1px;text-shadow:0 0 5px rgba(255,220,120,.55);}
 
-/* hearts / lives row */
-.lives {
-  display:flex; align-items:center; gap:5px;
-  background:rgba(8,4,1,.88);
-  border:1px solid #5a3800;
-  padding:3px 11px;
-  box-shadow:0 0 8px rgba(0,0,0,.6);
-}
-.lives-heart { color:#ff2233; font-size:14px; text-shadow:0 0 7px rgba(255,30,40,.9); }
-.lives-num   { font-size:14px; font-weight:700; color:#ffe890; letter-spacing:1px;
-               text-shadow:0 0 5px rgba(255,220,120,.55); }
+/* ──────────── ITEM SLOTS  bottom-right ──────────── */
+.slots{position:absolute;bottom:18px;right:16px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+.srow{display:flex;gap:4px;}
+.slot{width:52px;height:52px;background:linear-gradient(135deg,#1c1204,#0e0902);border:2px solid #5a3800;
+  box-shadow:0 0 0 1px #2a1800,inset 0 0 12px rgba(0,0,0,.85),0 2px 9px rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;transition:border-color .18s,box-shadow .18s;}
+.slot::before{content:'';position:absolute;inset:3px;border:1px solid rgba(200,150,30,.1);}
+.slot:hover,.slot.on{border-color:var(--g2);box-shadow:0 0 0 1px #5a3800,0 0 14px rgba(200,150,30,.32),inset 0 0 12px rgba(0,0,0,.85);}
+.slot .ico{font-size:25px;line-height:1;}
+.slot .cnt{position:absolute;bottom:2px;right:4px;font-size:10px;font-weight:700;color:#e8d090;text-shadow:0 0 3px #000,0 1px 2px #000;}
 
-/* ═══════════════════════════════════════
-   CROSS HUD FRAME  (bottom-center)
-═══════════════════════════════════════ */
-.cross-wrap {
+/* ══════════════════════════════════════════════════
+   CROSS HUD — bottom-center
+   Ref: image 3 — iron cross, gold bevel, fleur caps
+   Numbers float ABOVE (HP) and BELOW (MP) the cross
+══════════════════════════════════════════════════ */
+.cross-root{
   position:absolute;
   bottom:0; left:50%; transform:translateX(-50%);
   display:flex; flex-direction:column; align-items:center;
-  user-select:none;
 }
 
-/* shared arm gradient (gold rod) */
-.arm-v {
-  width:46px;
-  background:linear-gradient(90deg,#2a1800 0%,#5a3800 22%,var(--gold-mid) 50%,#5a3800 78%,#2a1800 100%);
+/* ── stat float above cross ── */
+.stat-above{
+  display:flex; align-items:baseline; gap:6px;
+  margin-bottom:4px;
+}
+.stat-above .val{
+  font-size:36px; font-weight:700;
+  color:#fff; letter-spacing:1px;
+  text-shadow:0 0 10px rgba(255,255,255,.5), 0 2px 4px rgba(0,0,0,1);
+}
+.stat-above .max{
+  font-size:14px; color:rgba(255,255,255,.35);
+  text-shadow:0 1px 3px rgba(0,0,0,1);
+}
+
+/* ── stat float below cross ── */
+.stat-below{
+  display:flex; align-items:baseline; gap:5px;
+  margin-top:5px;
+}
+.stat-below .hico{
+  font-size:18px; color:#ff2233;
+  text-shadow:0 0 8px rgba(255,30,40,.9);
+}
+.stat-below .val{
+  font-size:24px; font-weight:700;
+  color:#fff;
+  text-shadow:0 0 8px rgba(255,255,255,.4), 0 2px 4px rgba(0,0,0,1);
+}
+
+/* ── cross vertical top arm ── */
+.cx-v-top{
+  width:48px; height:42px;
+  background:linear-gradient(90deg,
+    #1a0e00 0%,#3c2800 16%,#7a5410 34%,
+    var(--g1) 46%,var(--g0) 50%,var(--g1) 54%,
+    #7a5410 66%,#3c2800 84%,#1a0e00 100%
+  );
   position:relative;
+  display:flex; justify-content:center;
 }
-.arm-v::after {   /* inner shadow to give 3-D rod look */
-  content:'';
-  position:absolute; inset:0;
-  background:linear-gradient(90deg,transparent 30%,rgba(0,0,0,.35) 50%,transparent 70%);
+/* subtle inner shadow → 3-D rod */
+.cx-v-top::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 33%,rgba(0,0,0,.45) 50%,transparent 67%);}
+
+/* ── fleur-de-lis cap (top) ── */
+.cap{
+  display:flex;align-items:center;justify-content:center;
+  position:relative;z-index:5;flex-shrink:0;
 }
-
-.arm-top { height:34px; display:flex; justify-content:center; }
-.arm-bot { height:26px; }
-
-/* Fleur-de-lis caps — inline SVG via background */
-.cap {
-  font-size:30px;
-  line-height:1;
-  color:var(--gold-mid);
-  text-shadow:0 0 6px rgba(200,150,30,.7), 0 2px 5px rgba(0,0,0,.9);
-  display:flex; align-items:center; justify-content:center;
-  filter:drop-shadow(0 1px 3px rgba(0,0,0,1));
+/* Cap for top/bottom: 52px tall, 52px wide */
+.cap-top,.cap-bot{
+  width:52px;
 }
-.cap.top { margin-top:-18px; }
-.cap.bot { margin-top:4px; font-size:24px; transform:rotate(180deg); }
-
-/* horizontal assembly */
-.cross-h { display:flex; align-items:stretch; }
-
-/* left/right end arms */
-.arm-h {
-  width:46px;
-  background:linear-gradient(0deg,#2a1800 0%,#5a3800 22%,var(--gold-mid) 50%,#5a3800 78%,#2a1800 100%);
-  display:flex; align-items:center; justify-content:center;
+/* Cap shape: three stacked lobes + thin stem */
+/* We layer 3 rotated rounded diamonds to form a fleur */
+.fleur{
   position:relative;
+  width:52px; height:52px;
+  display:flex;align-items:center;justify-content:center;
 }
-.arm-h::after {
-  content:'';
-  position:absolute; inset:0;
-  background:linear-gradient(0deg,transparent 30%,rgba(0,0,0,.35) 50%,transparent 70%);
+/* centre diamond */
+.fleur::before{
+  content:'';position:absolute;
+  width:26px;height:26px;
+  background:linear-gradient(135deg,var(--g0),var(--g2));
+  transform:rotate(45deg);
+  box-shadow:0 0 8px rgba(200,150,30,.6);
 }
-.cap.side { font-size:26px; position:relative; z-index:1; }
-.cap.side.l { transform:rotate(-90deg); }
-.cap.side.r { transform:rotate( 90deg); }
-
-/* main horizontal body */
-.cross-body {
-  width:400px;
-  background:
-    linear-gradient(0deg,
-      var(--iron-lo) 0%,
-      var(--iron-mid) 10%,
-      #1c1206 14%,
-      #181004 86%,
-      var(--iron-mid) 90%,
-      var(--iron-lo) 100%
-    );
-  border-top:3px solid;
-  border-bottom:3px solid;
-  border-image:linear-gradient(90deg,var(--gold-lo),var(--gold-mid) 25%,var(--gold-hi) 50%,var(--gold-mid) 75%,var(--gold-lo)) 1;
-  padding:10px 18px;
-  display:flex; flex-direction:column; gap:7px;
-  position:relative;
-  box-shadow:
-    inset 0 1px 0 rgba(200,150,30,.12),
-    inset 0 -1px 0 rgba(200,150,30,.12),
-    inset 10px 0 24px rgba(0,0,0,.5),
-    inset -10px 0 24px rgba(0,0,0,.5);
+/* upper lobe */
+.fleur::after{
+  content:'';position:absolute;
+  width:16px;height:22px;top:2px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(180deg,var(--g0),var(--g2));
+  border-radius:50% 50% 0 0;
+  box-shadow:0 0 6px rgba(200,150,30,.5);
 }
-
-/* rivet diamonds */
-.cross-body::before,
-.cross-body::after {
-  content:'◆';
-  position:absolute; top:50%; transform:translateY(-50%);
-  font-size:7px; color:#6a4818; letter-spacing:0;
-}
-.cross-body::before { left:9px; }
-.cross-body::after  { right:9px; }
-
-/* ─ stat rows ─ */
-.stat {
-  display:flex; align-items:center; gap:9px;
-}
-.stat-ico {
-  font-size:15px; width:20px; text-align:center; flex-shrink:0; line-height:1;
-}
-.stat-ico.hp { color:#ff3333; text-shadow:0 0 7px rgba(255,40,40,.9),0 0 16px rgba(255,0,0,.4); }
-.stat-ico.mp { color:#3366ff; text-shadow:0 0 7px rgba(50,100,255,.9),0 0 16px rgba(0,80,255,.4); }
-
-.bar-track {
-  flex:1; height:19px;
-  background:#060302;
-  border:1px solid #3a2000;
-  box-shadow:inset 0 2px 7px rgba(0,0,0,.9), inset 0 0 12px rgba(0,0,0,.7);
-  position:relative; overflow:hidden; border-radius:1px;
-}
-.bar-fill {
-  position:absolute; inset:0; right:auto;
-  border-radius:1px;
-  transition:width .35s cubic-bezier(.4,0,.2,1);
-}
-.bar-fill.hp {
-  background:linear-gradient(180deg,var(--hp-hi) 0%,var(--hp-mid) 18%,#aa1010 55%,var(--hp-lo) 100%);
-  box-shadow:0 0 11px rgba(255,20,20,.4), inset 0 1px 0 rgba(255,140,140,.3);
-}
-.bar-fill.mp {
-  background:linear-gradient(180deg,var(--mp-hi) 0%,var(--mp-mid) 18%,#1a3ecc 55%,var(--mp-lo) 100%);
-  box-shadow:0 0 11px rgba(40,100,255,.4), inset 0 1px 0 rgba(140,190,255,.3);
-}
-.bar-fill::after {   /* shine */
-  content:'';
-  position:absolute; top:0; left:0; right:0; height:7px;
-  background:linear-gradient(180deg,rgba(255,255,255,.2) 0%,transparent 100%);
-}
-
-.stat-val {
-  min-width:76px; text-align:right; flex-shrink:0;
-  font-size:15px; font-weight:700; color:#ffe890;
-  text-shadow:0 0 7px rgba(255,220,120,.6), 0 1px 2px rgba(0,0,0,.9);
-  letter-spacing:.4px;
-}
-.stat-val small { font-size:10px; color:#7a5018; font-weight:400; }
-
-.sep {
-  height:1px;
-  background:linear-gradient(90deg,transparent,rgba(200,150,30,.48) 20%,rgba(200,150,30,.48) 80%,transparent);
-}
-
-/* ─ hanging scales (left of cross) ─ */
-.scales {
+/* side lobes via inner element */
+.fleur .fl-s{
   position:absolute;
-  left:-54px; bottom:16px;
+  width:22px;height:14px;top:50%;transform:translateY(-50%);
+  background:linear-gradient(90deg,var(--g2),var(--g1));
+  border-radius:50%;
+}
+.fleur .fl-s.l{left:0;}
+.fleur .fl-s.r{right:0;}
+/* stem below */
+.fleur .fl-stem{
+  position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+  width:6px;height:12px;
+  background:linear-gradient(90deg,var(--g3),var(--g1) 50%,var(--g3));
+}
+
+/* rotated for left/right caps */
+.fleur.rot90  { transform:rotate(90deg); }
+.fleur.rot180 { transform:rotate(180deg); }
+.fleur.rotn90 { transform:rotate(-90deg); }
+
+/* ── horizontal assembly ── */
+.cx-h{
+  display:flex; align-items:stretch;
+  position:relative;
+}
+
+/* left/right arm ends — gold rod (horizontal) */
+.cx-end{
+  width:48px; flex-shrink:0;
+  background:linear-gradient(0deg,
+    #1a0e00 0%,#3c2800 16%,#7a5410 34%,
+    var(--g1) 46%,var(--g0) 50%,var(--g1) 54%,
+    #7a5410 66%,#3c2800 84%,#1a0e00 100%
+  );
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+}
+.cx-end::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(0deg,transparent 33%,rgba(0,0,0,.45) 50%,transparent 67%);}
+
+/* cap containers on left/right */
+.cap-side{width:54px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;z-index:5;}
+
+/* scale/balance hanging from left end */
+.scale{
+  position:absolute;
+  left:-48px; bottom:-10px;
   display:flex; flex-direction:column; align-items:center;
-  z-index:2;
+  z-index:10;
 }
-.scales-post  { width:3px; height:22px; background:linear-gradient(90deg,#5a3800,var(--gold-mid) 50%,#5a3800); }
-.scales-arm   {
-  width:38px; height:3px;
-  background:linear-gradient(0deg,#5a3800,var(--gold-mid) 50%,#5a3800);
-}
-.scales-chain {
-  width:2px; height:14px;
-  background:repeating-linear-gradient(180deg,var(--gold-mid) 0,var(--gold-mid) 2px,transparent 2px,transparent 4px);
+.sc-post{width:3px;height:18px;background:linear-gradient(90deg,#5a3c08,var(--g2) 50%,#5a3c08);}
+.sc-arm{width:40px;height:3px;background:linear-gradient(0deg,#5a3c08,var(--g2) 50%,#5a3c08);}
+.sc-chain{
+  width:2px;height:18px;
+  background:repeating-linear-gradient(180deg,var(--g2) 0,var(--g2) 2px,transparent 2px,transparent 5px);
   margin-top:3px;
 }
-.scales-ball {
-  width:30px; height:30px; border-radius:50%;
-  background:radial-gradient(circle at 38% 30%,#545470,#20202e 60%,#101018);
+.sc-ball{
+  width:34px;height:34px;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%,#585870,#202030 58%,#101018);
   border:2px solid;
-  border-color:#9090b0 #4a4a60 #9090b0 #b0b0d0;
-  box-shadow:0 3px 10px rgba(0,0,0,.85), inset 0 1px 0 rgba(200,200,255,.1);
-  margin-top:0;
+  border-color:#9898b8 #484860 #9898b8 #b0b0d0;
+  box-shadow:0 3px 12px rgba(0,0,0,.9),inset 0 1px 0 rgba(220,220,255,.1);
 }
 
-/* ═══════════════════════════════════════
-   ITEM SLOTS  (bottom-right)
-═══════════════════════════════════════ */
-.slots-wrap {
-  position:absolute; bottom:14px; right:14px;
-  display:flex; flex-direction:column; gap:6px; align-items:flex-end;
+/* ── MAIN BAR BODY ── */
+.cx-body{
+  width:400px; /* bars container */
+  /* dark iron gradient — light top/bot edges give bevel of the cross arm face */
+  background:linear-gradient(180deg,
+    var(--iron-a)  0%,
+    var(--iron-c) 5%,
+    var(--iron-b) 10%,
+    var(--iron-a) 90%,
+    var(--iron-c) 95%,
+    var(--iron-a) 100%
+  );
+  /* gold top/bottom borders — match the arm bevel color */
+  border-top:4px solid transparent;
+  border-bottom:4px solid transparent;
+  border-image:linear-gradient(90deg,
+    var(--g5),var(--g4) 6%,var(--g3) 16%,var(--g2) 26%,
+    var(--g1) 38%,var(--g0) 50%,
+    var(--g1) 62%,var(--g2) 74%,var(--g3) 84%,var(--g4) 94%,var(--g5)
+  ) 1;
+  padding:12px 22px;
+  display:flex; flex-direction:column; gap:8px;
+  position:relative;
+  box-shadow:
+    inset 0 1px 0 rgba(200,150,30,.14),
+    inset 0 -1px 0 rgba(200,150,30,.14),
+    inset 14px 0 32px rgba(0,0,0,.6),
+    inset -14px 0 32px rgba(0,0,0,.6);
 }
-.slots-row { display:flex; gap:4px; }
+/* rivet dots */
+.cx-body::before,.cx-body::after{
+  content:'◆';position:absolute;top:50%;transform:translateY(-50%);
+  font-size:7px;color:var(--g4);
+}
+.cx-body::before{left:10px;}
+.cx-body::after{ right:10px;}
 
-.slot {
-  width:52px; height:52px;
-  background:linear-gradient(135deg,#1c1204,#0e0902);
-  border:2px solid #5a3800;
-  box-shadow:0 0 0 1px #2a1800, inset 0 0 12px rgba(0,0,0,.85), 0 2px 9px rgba(0,0,0,.7);
-  display:flex; align-items:center; justify-content:center;
-  position:relative; cursor:pointer;
-  transition:border-color .18s, box-shadow .18s;
+/* ── bar tracks ── */
+.bar-row{
+  display:flex;align-items:center;gap:10px;
 }
-.slot::before {
-  content:''; position:absolute; inset:3px;
-  border:1px solid rgba(200,150,30,.1);
+.bico{font-size:15px;width:20px;text-align:center;flex-shrink:0;line-height:1;}
+.bico.hp{color:#ff3333;text-shadow:0 0 7px rgba(255,40,40,.9),0 0 16px rgba(255,0,0,.4);}
+.bico.mp{color:#3366ff;text-shadow:0 0 7px rgba(50,100,255,.9),0 0 16px rgba(0,80,255,.4);}
+
+.bar-trk{
+  flex:1;height:22px;
+  background:#060302;
+  border:1px solid #3a2000;
+  box-shadow:inset 0 2px 7px rgba(0,0,0,.9),inset 0 0 12px rgba(0,0,0,.7);
+  position:relative;overflow:hidden;border-radius:1px;
 }
-.slot:hover, .slot.on {
-  border-color:var(--gold-mid);
-  box-shadow:0 0 0 1px #5a3800, 0 0 14px rgba(200,150,30,.32), inset 0 0 12px rgba(0,0,0,.85);
+.bar-fill{
+  position:absolute;inset:0;right:auto;
+  border-radius:1px;
+  transition:width .38s cubic-bezier(.4,0,.2,1);
 }
-.slot .ico  { font-size:25px; line-height:1; }
-.slot .cnt  {
-  position:absolute; bottom:2px; right:4px;
-  font-size:10px; font-weight:700; color:#e8d090;
-  text-shadow:0 0 3px #000, 0 1px 2px #000;
+.bar-fill.hp{
+  background:linear-gradient(180deg,#ff8888 0%,#dd1e1e 18%,#aa0e0e 55%,#7a0505 100%);
+  box-shadow:0 0 12px rgba(255,20,20,.4),inset 0 1px 0 rgba(255,140,140,.32);
+}
+.bar-fill.mp{
+  background:linear-gradient(180deg,#88aaff 0%,#2255ee 18%,#1840cc 55%,#0d1e99 100%);
+  box-shadow:0 0 12px rgba(40,100,255,.4),inset 0 1px 0 rgba(140,190,255,.32);
+}
+.bar-fill::after{  /* shine */
+  content:'';position:absolute;top:0;left:0;right:0;height:8px;
+  background:linear-gradient(180deg,rgba(255,255,255,.22) 0%,transparent 100%);
 }
 
-/* ═══════════════════════════════════════
-   CONTROLS
-═══════════════════════════════════════ */
-.ctrl {
-  display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
-  max-width:960px;
+/* gold separator between bars */
+.bar-sep{
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(200,150,30,.5) 20%,rgba(200,150,30,.5) 80%,transparent);
 }
-.btn {
+
+/* ── cross vertical bottom arm ── */
+.cx-v-bot{
+  width:48px;height:32px;
+  background:linear-gradient(90deg,
+    #1a0e00 0%,#3c2800 16%,#7a5410 34%,
+    var(--g1) 46%,var(--g0) 50%,var(--g1) 54%,
+    #7a5410 66%,#3c2800 84%,#1a0e00 100%
+  );
+  position:relative;
+  display:flex; justify-content:center; align-items:flex-end;
+}
+.cx-v-bot::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 33%,rgba(0,0,0,.45) 50%,transparent 67%);}
+
+/* ──────────── CONTROLS ──────────── */
+.ctrl{
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:960px;
+}
+.btn{
   padding:7px 16px;
   background:linear-gradient(180deg,#221502,#140e01);
-  border:1px solid #5a3800;
-  color:var(--gold-mid);
-  font-family:inherit; font-size:11px; letter-spacing:1px;
-  text-transform:uppercase; cursor:pointer;
-  transition:all .14s;
+  border:1px solid #5a3800;color:var(--g2);
+  font-family:inherit;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .14s;
 }
-.btn:hover { border-color:var(--gold-mid); background:linear-gradient(180deg,#321e04,#1e1202); box-shadow:0 0 8px rgba(200,150,30,.22); }
-.btn:active { transform:translateY(1px); }
-.btn.r { border-color:#661111; color:#cc4444; }
-.btn.b { border-color:#112266; color:#4466cc; }
-.btn.g { border-color:#116611; color:#44cc44; }
-.btn.p { border-color:#881133; color:#cc3355; }
+.btn:hover{border-color:var(--g2);background:linear-gradient(180deg,#321e04,#1e1202);box-shadow:0 0 8px rgba(200,150,30,.22);}
+.btn:active{transform:translateY(1px);}
+.btn.r{border-color:#661111;color:#cc4444;}
+.btn.b{border-color:#112266;color:#4466cc;}
+.btn.g{border-color:#116611;color:#44cc44;}
+.btn.p{border-color:#881133;color:#cc3355;}
 </style>
 </head>
 <body>
 
-<!-- ══════════════ VIEWPORT ══════════════ -->
-<div class="viewport">
+<!-- ═══════════ VIEWPORT ═══════════ -->
+<div class="vp">
 
   <!-- overlays -->
-  <div class="ov dmg"  id="ovDmg"></div>
-  <div class="ov heal" id="ovHeal"></div>
-  <div class="ov lvl"  id="ovLvl"></div>
-  <div class="vignette" id="vig"></div>
+  <div class="ov dmg"  id="ovD"></div>
+  <div class="ov heal" id="ovH"></div>
+  <div class="ov lvl"  id="ovL"></div>
+  <div class="vig"     id="vig"></div>
 
   <!-- notifications -->
-  <div class="notif-area" id="notifArea"></div>
+  <div class="narea" id="narea"></div>
 
   <!-- LV / EXP -->
   <div class="lv-panel">
     <div class="lv-box">
-      <span class="lv-label">LV</span>
-      <span class="lv-num" id="lvNum">12</span>
+      <span class="lv-lbl">LV</span>
+      <span class="lv-num" id="lvN">12</span>
     </div>
     <div class="exp-row">
       <span class="exp-lbl">EXP</span>
-      <div class="exp-track"><div class="exp-fill" id="expF" style="width:42%"></div></div>
+      <div class="exp-trk"><div class="exp-f" id="expF" style="width:42%"></div></div>
     </div>
   </div>
 
   <!-- BOSS BAR -->
-  <div class="boss-panel" id="bossPanel">
-    <div class="boss-name" id="bossName">Death — The Reaper</div>
-    <div class="boss-track"><div class="boss-fill" id="bossF" style="width:75%"></div></div>
+  <div class="boss-p" id="bossP">
+    <div class="boss-nm" id="bossNm">Death — The Reaper</div>
+    <div class="boss-trk"><div class="boss-f" id="bossF" style="width:75%"></div></div>
   </div>
 
   <!-- PORTRAIT -->
-  <div class="portrait-wrap">
-    <div class="portrait">
-      <div class="portrait-ring"></div>
-      <div class="portrait-face"><span>⚔</span></div>
+  <div class="port-wrap">
+    <div class="port">
+      <div class="p-ring"></div>
+      <div class="p-face"><span>⚔</span></div>
       <div class="pip n"></div><div class="pip s"></div>
       <div class="pip e"></div><div class="pip w"></div>
     </div>
     <div class="lives">
-      <span class="lives-heart">♥</span>
-      <span class="lives-num" id="heartsNum">09</span>
+      <span class="lh">♥</span>
+      <span class="ln" id="hrtN">09</span>
     </div>
   </div>
-
-  <!-- CROSS HUD -->
-  <div class="cross-wrap">
-
-    <!-- top arm -->
-    <div class="arm-v arm-top">
-      <div class="cap top">⚜</div>
-    </div>
-
-    <!-- horizontal assembly -->
-    <div class="cross-h">
-
-      <!-- left arm -->
-      <div class="arm-h" style="position:relative;">
-        <div class="cap side l">⚜</div>
-        <!-- hanging scales -->
-        <div class="scales">
-          <div class="scales-post"></div>
-          <div class="scales-arm"></div>
-          <div class="scales-chain"></div>
-          <div class="scales-ball"></div>
-        </div>
-      </div>
-
-      <!-- bars body -->
-      <div class="cross-body">
-        <!-- HP -->
-        <div class="stat">
-          <span class="stat-ico hp">♥</span>
-          <div class="bar-track">
-            <div class="bar-fill hp" id="hpF" style="width:78%"></div>
-          </div>
-          <span class="stat-val"><span id="hpC">780</span><small>/<span id="hpM">1000</span></small></span>
-        </div>
-
-        <div class="sep"></div>
-
-        <!-- MP -->
-        <div class="stat">
-          <span class="stat-ico mp">✦</span>
-          <div class="bar-track">
-            <div class="bar-fill mp" id="mpF" style="width:55%"></div>
-          </div>
-          <span class="stat-val"><span id="mpC">220</span><small>/<span id="mpM">400</span></small></span>
-        </div>
-      </div>
-
-      <!-- right arm -->
-      <div class="arm-h">
-        <div class="cap side r">⚜</div>
-      </div>
-
-    </div><!-- /cross-h -->
-
-    <!-- bottom arm -->
-    <div class="arm-v arm-bot">
-      <div class="cap bot">⚜</div>
-    </div>
-
-  </div><!-- /cross-wrap -->
 
   <!-- ITEM SLOTS -->
-  <div class="slots-wrap">
-    <div class="slots-row">
-      <div class="slot on"  title="Short Sword"><span class="ico">⚔</span></div>
-      <div class="slot"     title="Holy Flame" ><span class="ico">🔥</span><span class="cnt">8</span></div>
-      <div class="slot"     title="Elixir"      ><span class="ico">⚗</span><span class="cnt">5</span></div>
+  <div class="slots">
+    <div class="srow">
+      <div class="slot on" title="Short Sword"><span class="ico">⚔</span></div>
+      <div class="slot"    title="Holy Flame" ><span class="ico">🔥</span><span class="cnt">8</span></div>
+      <div class="slot"    title="Elixir"     ><span class="ico">⚗</span><span class="cnt">5</span></div>
     </div>
   </div>
 
-</div><!-- /viewport -->
+  <!-- ═══════ CROSS HUD ═══════ -->
+  <div class="cross-root">
 
-<!-- ══════════════ CONTROLS ══════════════ -->
+    <!-- HP value floats above the cross -->
+    <div class="stat-above">
+      <span class="val" id="hpC">780</span>
+      <span class="max">/ <span id="hpM">1000</span></span>
+    </div>
+
+    <!-- Top fleur cap -->
+    <div class="cap cap-top">
+      <div class="fleur">
+        <div class="fl-s l"></div>
+        <div class="fl-s r"></div>
+        <div class="fl-stem"></div>
+      </div>
+    </div>
+
+    <!-- Top arm rod -->
+    <div class="cx-v-top"></div>
+
+    <!-- HORIZONTAL ASSEMBLY -->
+    <div class="cx-h">
+
+      <!-- Left cap -->
+      <div class="cap-side" style="position:relative;">
+        <div class="fleur rot90">
+          <div class="fl-s l"></div>
+          <div class="fl-s r"></div>
+          <div class="fl-stem"></div>
+        </div>
+        <!-- Hanging scale -->
+        <div class="scale">
+          <div class="sc-post"></div>
+          <div class="sc-arm"></div>
+          <div class="sc-chain"></div>
+          <div class="sc-ball"></div>
+        </div>
+      </div>
+
+      <!-- Left arm rod -->
+      <div class="cx-end"></div>
+
+      <!-- BAR BODY -->
+      <div class="cx-body">
+        <!-- HP bar -->
+        <div class="bar-row">
+          <span class="bico hp">♥</span>
+          <div class="bar-trk">
+            <div class="bar-fill hp" id="hpF" style="width:78%"></div>
+          </div>
+        </div>
+
+        <div class="bar-sep"></div>
+
+        <!-- MP bar -->
+        <div class="bar-row">
+          <span class="bico mp">✦</span>
+          <div class="bar-trk">
+            <div class="bar-fill mp" id="mpF" style="width:55%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right arm rod -->
+      <div class="cx-end"></div>
+
+      <!-- Right cap -->
+      <div class="cap-side">
+        <div class="fleur rotn90">
+          <div class="fl-s l"></div>
+          <div class="fl-s r"></div>
+          <div class="fl-stem"></div>
+        </div>
+      </div>
+
+    </div><!-- /cx-h -->
+
+    <!-- Bottom arm rod -->
+    <div class="cx-v-bot"></div>
+
+    <!-- Bottom fleur cap -->
+    <div class="cap cap-bot">
+      <div class="fleur rot180">
+        <div class="fl-s l"></div>
+        <div class="fl-s r"></div>
+        <div class="fl-stem"></div>
+      </div>
+    </div>
+
+    <!-- MP value + hearts float below the cross -->
+    <div class="stat-below">
+      <span class="hico">✦</span>
+      <span class="val" id="mpC">220</span>
+      <span style="font-size:13px;color:rgba(255,255,255,.3);margin-left:2px;">/ <span id="mpM">400</span></span>
+    </div>
+
+  </div><!-- /cross-root -->
+
+</div><!-- /vp -->
+
+<!-- ═══════════ CONTROLS ═══════════ -->
 <div class="ctrl">
   <button class="btn r" onclick="G.dmg(120)">− HP</button>
   <button class="btn r" onclick="G.dmg(380)">Big Hit</button>
@@ -592,31 +550,38 @@ body {
 
 <script>
 const G = (() => {
-  const s = { hp:780, mxHp:1000, mp:220, mxMp:400, lv:12, exp:42, hearts:9,
+  const s = { hp:780, mxHp:1000, mp:220, mxMp:400,
+               lv:12, exp:42, hearts:9,
                bossHp:75, bossOn:false, bossT:null };
 
   const el = id => document.getElementById(id);
 
+  /* inject HP danger keyframe */
+  const sty = document.createElement('style');
+  sty.textContent = `@keyframes hpDanger{
+    0%,100%{box-shadow:0 0 12px rgba(255,20,20,.4),inset 0 1px 0 rgba(255,140,140,.32)}
+    50%    {box-shadow:0 0 30px rgba(255,0,0,.95),0 0 55px rgba(255,0,0,.22),inset 0 1px 0 rgba(255,140,140,.32)}}`;
+  document.head.appendChild(sty);
+
   function upd() {
-    const hp = Math.max(0, s.hp),
-          mp = Math.max(0, s.mp),
+    const hp   = Math.max(0, s.hp),
+          mp   = Math.max(0, s.mp),
           hpPct = hp / s.mxHp * 100,
           mpPct = mp / s.mxMp * 100;
 
-    el('hpF').style.width  = hpPct + '%';
-    el('mpF').style.width  = mpPct + '%';
-    el('hpC').textContent  = hp;
-    el('mpC').textContent  = mp;
-    el('hpM').textContent  = s.mxHp;
-    el('mpM').textContent  = s.mxMp;
-    el('lvNum').textContent    = s.lv;
-    el('expF').style.width     = s.exp + '%';
-    el('heartsNum').textContent = String(s.hearts).padStart(2,'0');
+    el('hpF').style.width = hpPct + '%';
+    el('mpF').style.width = mpPct + '%';
+    el('hpC').textContent = hp;
+    el('mpC').textContent = mp;
+    el('hpM').textContent = s.mxHp;
+    el('mpM').textContent = s.mxMp;
+    el('lvN').textContent = s.lv;
+    el('expF').style.width = s.exp + '%';
+    el('hrtN').textContent = String(s.hearts).padStart(2,'0');
 
-    // danger state
-    const danger = hpPct < 25;
-    el('hpF').style.animation = danger ? 'hpDanger .75s ease-in-out infinite' : '';
-    el('vig').classList.toggle('danger', danger);
+    const d = hpPct < 25;
+    el('hpF').style.animation = d ? 'hpDanger .75s ease-in-out infinite' : '';
+    el('vig').classList.toggle('danger', d);
   }
 
   function flash(id) {
@@ -631,34 +596,24 @@ const G = (() => {
     const d = document.createElement('div');
     d.className = 'notif ' + cls;
     d.textContent = txt;
-    el('notifArea').appendChild(d);
+    el('narea').appendChild(d);
     d.addEventListener('animationend', () => d.remove());
   }
 
-  // inject HP danger keyframes at runtime
-  const sty = document.createElement('style');
-  sty.textContent = `@keyframes hpDanger {
-    0%,100%{box-shadow:0 0 11px rgba(255,20,20,.4),inset 0 1px 0 rgba(255,140,140,.3)}
-    50%    {box-shadow:0 0 28px rgba(255,0,0,.95),0 0 50px rgba(255,0,0,.25),inset 0 1px 0 rgba(255,140,140,.3)}
-  }`;
-  document.head.appendChild(sty);
-
   return {
-    dmg(n)    { s.hp = Math.max(0, s.hp - n); flash('ovDmg');  upd(); },
-    heal(n)   { s.hp = Math.min(s.mxHp, s.hp + n); flash('ovHeal'); upd(); },
-    useMp(n)  { s.mp = Math.max(0, s.mp - n);  upd(); },
+    dmg(n)    { s.hp = Math.max(0, s.hp - n); flash('ovD'); upd(); },
+    heal(n)   { s.hp = Math.min(s.mxHp, s.hp + n); flash('ovH'); upd(); },
+    useMp(n)  { s.mp = Math.max(0, s.mp - n); upd(); },
     restMp(n) { s.mp = Math.min(s.mxMp, s.mp + n); upd(); },
-    lvlUp()   {
+    lvlUp() {
       s.lv++; s.exp = 0;
       s.mxHp += 65; s.hp = s.mxHp;
       s.mxMp += 28; s.mp = s.mxMp;
-      flash('ovLvl');
-      notify('Level Up!', 'lvl-up');
-      upd();
+      flash('ovL'); notify('Level Up!', 'lu'); upd();
     },
     boss() {
       s.bossOn = !s.bossOn;
-      el('bossPanel').classList.toggle('on', s.bossOn);
+      el('bossP').classList.toggle('on', s.bossOn);
       if (s.bossT) clearInterval(s.bossT);
       if (s.bossOn) {
         s.bossHp = 75; el('bossF').style.width = '75%';
@@ -668,10 +623,7 @@ const G = (() => {
           if (s.bossHp <= 0) {
             clearInterval(s.bossT);
             notify('Boss Defeated');
-            setTimeout(() => {
-              el('bossPanel').classList.remove('on');
-              s.bossOn = false;
-            }, 1200);
+            setTimeout(() => { el('bossP').classList.remove('on'); s.bossOn = false; }, 1200);
           }
         }, 100);
       }
