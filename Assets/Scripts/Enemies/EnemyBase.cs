@@ -25,8 +25,8 @@ namespace MidnightReturn.Enemies
         protected float        _attackCooldown;
         protected bool         _isDying;
 
-        private MaterialPropertyBlock _mpb;
-        private Renderer _renderer;
+        private   MaterialPropertyBlock _mpb;
+        protected Renderer _renderer;
 
         // Cached
         protected Vector3 PlayerPos => _player != null ? _player.position : transform.position;
@@ -132,6 +132,10 @@ namespace MidnightReturn.Enemies
             _mpb.SetColor("_EmissiveColor", Color.black);
             _renderer.SetPropertyBlock(_mpb);
         }
+
+        // Public shim used by BT node lambdas and BossController
+        public void MoveTowardPublic(Vector3 target, float speed, float dt)
+            => MoveToward(target, speed, dt);
 
         // Shared movement helper — 2.5D plane locked
         protected void MoveToward(Vector3 target, float speed, float dt)

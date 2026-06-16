@@ -104,7 +104,12 @@ Level-up: random stat growth with variance, full HP/MP restore
 - [x] Phase 1: Core framework, movement system, state machine, RPG stats, VFX pipeline
 - [x] Phase 2: Enemy roster data, weapon/armor data, initial game scene
 - [x] Engine conversion: Phaser 3 → Unity HDRP C# (complete)
-- [ ] Phase 3: Enemy AI behavior trees, boss multi-phase scripting
+- [x] Phase 3: Enemy AI behavior trees, boss multi-phase scripting
+  - BehaviorTree.cs — Sequence/Selector/Parallel composites, Cooldown/Inverter/RepeatUntilFail decorators, Condition/Action lambdas, BTBlackboard
+  - EnemyBTNodes.cs — BuildPatrolTree, BuildRangedTree, BuildFlyingTree factories
+  - EnemyAIController.cs — additive EnemyBase subclass, BT-driven, coexists with existing FSM enemies
+  - BossController.cs — 6-phase FSM (Idle→Intro→Phase0-2→Dying→Dead), 6 attack patterns, per-phase BT rebuild
+  - BossPhaseDataSO.cs — weighted attack picker, HP threshold, aggression multiplier, transition VFX
 - [ ] Phase 4: Metroidvania map system — room graph, transitions, save statues
 - [ ] Phase 5: Inventory UI, equipment screen, spell system
 - [ ] Phase 6: Full audio pipeline, music zones, dynamic mix
