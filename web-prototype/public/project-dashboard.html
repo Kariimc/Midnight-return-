@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Midnight Return — Project Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg:       #06030f;
+  --bg2:      #0d0820;
+  --bg3:      #120d2a;
+  --border:   #2a1a4a;
+  --accent:   #8833cc;
+  --accent2:  #cc44ff;
+  --gold:     #d4a017;
+  --gold2:    #ffdd55;
+  --red:      #cc2233;
+  --red2:     #ff4455;
+  --blue:     #2255cc;
+  --blue2:    #55aaff;
+  --green:    #22aa55;
+  --green2:   #44ff88;
+  --text:     #c8b8e8;
+  --text2:    #8877aa;
+  --white:    #f0e8ff;
+}
+
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Text', serif;
+  font-size: 16px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Background ── */
+body::before {
+  content:'';
+  position: fixed; inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(136,51,204,.15) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(34,85,204,.1) 0%, transparent 60%);
+  pointer-events:none; z-index:0;
+}
+
+/* ── Header ── */
+header {
+  position: relative;
+  text-align: center;
+  padding: 48px 20px 32px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(20,8,40,.9) 0%, transparent 100%);
+}
+header .eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--accent2);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+header h1 {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: clamp(36px, 6vw, 72px);
+  background: linear-gradient(135deg, var(--gold) 0%, var(--white) 40%, var(--gold2) 70%, var(--accent2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  line-height: 1.1;
+  letter-spacing: 4px;
+}
+header .subtitle {
+  font-size: 18px;
+  color: var(--text2);
+  margin-top: 10px;
+  font-style: italic;
+  letter-spacing: 1px;
+}
+header .stack-pills {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  justify-content: center;
+  margin-top: 18px;
+}
+.pill {
+  background: rgba(136,51,204,.15);
+  border: 1px solid rgba(136,51,204,.4);
+  color: var(--accent2);
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.pill.gold  { background:rgba(212,160,23,.12); border-color:rgba(212,160,23,.35); color:var(--gold2); }
+.pill.blue  { background:rgba(34,85,204,.15);  border-color:rgba(34,85,204,.4);   color:var(--blue2); }
+.pill.green { background:rgba(34,170,85,.12);  border-color:rgba(34,170,85,.3);   color:var(--green2);}
+
+/* ── Nav Tabs ── */
+nav {
+  display: flex; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  position: sticky; top: 0; z-index: 100;
+}
+nav button {
+  background: none; border: none; cursor: pointer;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--text2);
+  padding: 14px 22px;
+  border-bottom: 2px solid transparent;
+  transition: all .2s;
+  white-space: nowrap;
+}
+nav button:hover  { color: var(--text); }
+nav button.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+/* ── Main Layout ── */
+main { max-width: 1400px; margin: 0 auto; padding: 32px 20px 80px; }
+
+/* ── Sections ── */
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── Section Heading ── */
+.section-title {
+  font-family: 'Cinzel', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--gold);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 28px;
+  display: flex; align-items: center; gap: 12px;
+}
+.section-title .icon { font-size: 22px; }
+
+/* ── Cards ── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.card h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  color: var(--accent2);
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+/* ── Grid layouts ── */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media(max-width:900px) {
+  .grid3,.grid4 { grid-template-columns: 1fr 1fr; }
+  .grid2 { grid-template-columns: 1fr; }
+}
+@media(max-width:560px) {
+  .grid3,.grid4 { grid-template-columns: 1fr; }
+}
+
+/* ── Phase Roadmap ── */
+.phase-row {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(42,26,74,.5);
+}
+.phase-row:last-child { border-bottom: none; }
+.phase-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.phase-dot.done    { background: var(--green);  color: #000; }
+.phase-dot.current { background: var(--gold);   color: #000; animation: pulseDot 1.5s infinite; }
+.phase-dot.pending { background: var(--bg3);    border: 1px solid var(--border); color: var(--text2); }
+@keyframes pulseDot { 0%,100%{ box-shadow:0 0 0 0 rgba(212,160,23,.4) } 50%{ box-shadow:0 0 0 8px rgba(212,160,23,0) } }
+
+.phase-content h4 {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.phase-content p { font-size: 14px; color: var(--text2); line-height: 1.5; }
+.phase-content .tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+.phase-tag {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; padding:2px 8px;
+  border-radius:3px;
+  background:rgba(136,51,204,.15);
+  border:1px solid rgba(136,51,204,.3);
+  color:var(--accent2);
+}
+.phase-tag.done { background:rgba(34,170,85,.12); border-color:rgba(34,170,85,.3); color:var(--green2); }
+
+/* ── Enemy Cards ── */
+.enemy-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  transition: border-color .2s, transform .15s;
+  cursor: default;
+}
+.enemy-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.enemy-card .ename {
+  font-family:'Cinzel',serif;
+  font-size: 13px;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.enemy-card .ezone {
+  font-size: 11px;
+  color: var(--text2);
+  font-family:'JetBrains Mono',monospace;
+  margin-bottom: 8px;
+  letter-spacing:.5px;
+}
+.enemy-card .estats {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  font-size: 12px;
+  font-family:'JetBrains Mono',monospace;
+}
+.estat-label { color: var(--text2); }
+.estat-val   { color: var(--white); text-align: right; }
+.enemy-card .eai {
+  margin-top: 8px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.ai-patrol   { background:rgba(34,85,204,.2); color:var(--blue2);   border:1px solid rgba(34,85,204,.3); }
+.ai-flying   { background:rgba(136,51,204,.2);color:var(--accent2); border:1px solid rgba(136,51,204,.3); }
+.ai-ranged   { background:rgba(212,160,23,.15);color:var(--gold2);  border:1px solid rgba(212,160,23,.3); }
+.ai-chase    { background:rgba(204,34,51,.2);  color:var(--red2);   border:1px solid rgba(204,34,51,.3); }
+.ai-boss     { background:rgba(255,0,100,.15); color:#ff88bb;       border:1px solid rgba(255,0,100,.3); }
+.enemy-card .edesc { font-size:13px; color:var(--text2); margin-top:6px; font-style:italic; line-height:1.4; }
+.enemy-card .eresist { margin-top:6px; display:flex; flex-wrap:wrap; gap:4px; }
+.resist-badge {
+  font-size:10px; padding:1px 6px; border-radius:2px;
+  font-family:'JetBrains Mono',monospace;
+}
+.r-weak   { background:rgba(255,0,0,.15); border:1px solid rgba(255,0,0,.3); color:#ff6666; }
+.r-immune { background:rgba(0,200,100,.12); border:1px solid rgba(0,200,100,.3); color:var(--green2); }
+
+/* ── Weapon Cards ── */
+.weapon-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  transition: border-color .2s, transform .15s;
+}
+.weapon-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.weapon-card .wname {
+  font-family:'Cinzel',serif;
+  font-size: 14px;
+  color: var(--gold2);
+  margin-bottom: 3px;
+}
+.weapon-card .wtype {
+  font-family:'JetBrains Mono',monospace;
+  font-size: 10px;
+  color: var(--text2);
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.stat-row {
+  display:flex; justify-content:space-between;
+  font-size: 13px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(42,26,74,.4);
+}
+.stat-row:last-of-type { border-bottom: none; }
+.stat-row .k { color: var(--text2); }
+.stat-row .v { color: var(--white); font-family:'JetBrains Mono',monospace; font-size:12px; }
+.trail-swatch {
+  width:100%; height: 4px;
+  border-radius: 2px;
+  margin-top: 10px;
+  box-shadow: 0 0 8px 1px currentColor;
+}
+.weapon-card .wdesc { font-size:13px; color:var(--text2); margin-top:8px; font-style:italic; }
+.special-badge {
+  margin-top:8px;
+  font-size:10px; font-family:'JetBrains Mono',monospace;
+  padding:2px 8px; border-radius:3px;
+  background:rgba(255,100,0,.15);
+  border:1px solid rgba(255,100,0,.3);
+  color:#ffaa44;
+  display:inline-block;
+}
+
+/* ── Architecture ── */
+.file-tree {
+  font-family:'JetBrains Mono',monospace;
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--text);
+}
+.file-tree .dir  { color: var(--accent2); }
+.file-tree .file { color: var(--text2); }
+.file-tree .file .fname { color: var(--white); }
+.file-tree .file .fdesc { color: var(--text2); font-size:11px; }
+.file-tree .done { color: var(--green2); }
+.system-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px;
+}
+.system-card .sname {
+  font-family:'Cinzel',serif;
+  font-size:14px; color:var(--accent2);
+  margin-bottom:8px;
+}
+.system-card .sfile {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--gold);
+  margin-bottom:8px;
+}
+.system-card ul {
+  list-style:none; padding:0;
+}
+.system-card ul li {
+  font-size:13px; color:var(--text2);
+  padding:2px 0;
+  padding-left:14px;
+  position:relative;
+}
+.system-card ul li::before {
+  content:'›'; position:absolute; left:0; color:var(--accent);
+}
+
+/* ── HDRP Features Table ── */
+.feature-table {
+  width:100%; border-collapse:collapse;
+  font-size:14px;
+}
+.feature-table th {
+  font-family:'Cinzel',serif;
+  font-size:12px; letter-spacing:1px;
+  text-transform:uppercase;
+  color:var(--text2);
+  padding:10px 16px;
+  text-align:left;
+  border-bottom:1px solid var(--border);
+}
+.feature-table td {
+  padding:12px 16px;
+  border-bottom:1px solid rgba(42,26,74,.4);
+  vertical-align:top;
+}
+.feature-table tr:hover td { background:rgba(136,51,204,.05); }
+.feature-table .fname { color:var(--white); font-weight:600; }
+.feature-table .ffile {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--gold);
+}
+.feature-table .fdesc { color:var(--text2); font-size:13px; }
+.feature-table .fstatus {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color: var(--green2);
+}
+
+/* ── HUD Preview ── */
+#hud-preview-frame {
+  width:100%; height:580px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--bg3);
+}
+
+/* ── Armor ── */
+.armor-card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:14px;
+  transition:border-color .2s;
+}
+.armor-card:hover { border-color:var(--blue); }
+.armor-card .aname { font-family:'Cinzel',serif; font-size:13px; color:var(--blue2); margin-bottom:3px; }
+.armor-card .aslot {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--text2); margin-bottom:8px;
+}
+.armor-card .adesc { font-size:13px; color:var(--text2); font-style:italic; }
+.stat-mods { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+.stat-mod {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; padding:2px 6px; border-radius:3px;
+}
+.stat-mod.pos { background:rgba(34,170,85,.15); border:1px solid rgba(34,170,85,.3); color:var(--green2); }
+.stat-mod.neg { background:rgba(204,34,51,.15);  border:1px solid rgba(204,34,51,.3); color:var(--red2); }
+.passive-badge {
+  margin-top:6px;
+  font-size:10px; padding:2px 8px; border-radius:3px;
+  background:rgba(85,170,255,.12); border:1px solid rgba(85,170,255,.3);
+  color:var(--blue2); display:inline-block;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* ── RPG Stats ── */
+.rpg-formula {
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:20px 24px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  line-height:2;
+  color:var(--text);
+  margin-bottom:16px;
+}
+.rpg-formula .comment { color:var(--text2); }
+.rpg-formula .keyword { color:var(--accent2); }
+.rpg-formula .value   { color:var(--gold2); }
+.rpg-formula .fn      { color:var(--blue2); }
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* ── Animated decorative elements ── */
+.ornament {
+  text-align:center;
+  color:var(--border);
+  font-size:20px;
+  letter-spacing:8px;
+  margin:24px 0;
+}
+
+/* ── Stats bar ── */
+.bar-wrap { display:flex; align-items:center; gap:10px; margin:4px 0; }
+.bar-wrap .blabel { font-size:12px; color:var(--text2); width:30px; text-align:right; font-family:'JetBrains Mono',monospace; }
+.bar-track { flex:1; height:8px; background:rgba(0,0,0,.4); border-radius:4px; overflow:hidden; border:1px solid rgba(42,26,74,.6); }
+.bar-fill { height:100%; border-radius:4px; }
+.bar-wrap .bval { font-size:11px; color:var(--text2); font-family:'JetBrains Mono',monospace; width:28px; }
+
+/* ── Zone badge ── */
+.zone-badge {
+  display:inline-block;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; padding:2px 8px; border-radius:3px;
+  margin-top:4px;
+}
+.z-entrance  { background:rgba(212,160,23,.12); border:1px solid rgba(212,160,23,.3); color:var(--gold2); }
+.z-catacombs { background:rgba(34,85,204,.15);  border:1px solid rgba(34,85,204,.3);  color:var(--blue2); }
+.z-library   { background:rgba(136,51,204,.15); border:1px solid rgba(136,51,204,.3); color:var(--accent2); }
+.z-clocktower{ background:rgba(200,200,200,.1); border:1px solid rgba(200,200,200,.2); color:#cccccc; }
+.z-throne    { background:rgba(204,34,51,.15);  border:1px solid rgba(204,34,51,.3);  color:var(--red2); }
+
+/* ── Intro / hero live game preview ── */
+.hud-viewport {
+  position:relative;
+  width:100%; max-width:960px;
+  margin:0 auto;
+  aspect-ratio:16/9;
+  background:linear-gradient(180deg,#050010 0%,#0d0025 40%,#150035 100%);
+  border:2px solid var(--border);
+  border-radius:6px;
+  overflow:hidden;
+  font-family:'Crimson Text',serif;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Project Dashboard · Build 0.2</div>
+  <h1>MIDNIGHT RETURN</h1>
+  <div class="subtitle">AAA 2.5D Metroidvania · Spiritual Successor to Castlevania: Symphony of the Night</div>
+  <div class="stack-pills">
+    <span class="pill gold">Unity 2023.2 LTS</span>
+    <span class="pill gold">HDRP 16.x</span>
+    <span class="pill">Cinemachine 3.x</span>
+    <span class="pill">VFX Graph</span>
+    <span class="pill">Shader Graph</span>
+    <span class="pill blue">New Input System</span>
+    <span class="pill blue">UI Toolkit</span>
+    <span class="pill">Animation Rigging</span>
+    <span class="pill green">C# / TypeScript</span>
+    <span class="pill green">Phase 1–2 ✓</span>
+  </div>
+</header>
+
+<nav id="nav">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="architecture">Architecture</button>
+  <button data-tab="enemies">Enemies</button>
+  <button data-tab="weapons">Weapons</button>
+  <button data-tab="armor">Armor</button>
+  <button data-tab="rpg">RPG System</button>
+  <button data-tab="hdrp">HDRP Features</button>
+  <button data-tab="hud">Live HUD</button>
+  <button data-tab="roadmap">Roadmap</button>
+</nav>
+
+<main>
+
+<!-- ════════════════════════════════════════════════════════════ OVERVIEW -->
+<section class="section active" id="tab-overview">
+  <div class="section-title"><span class="icon">🏰</span> Project Overview</div>
+
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <h3>What We're Building</h3>
+        <p style="line-height:1.7;color:var(--text)">A <strong style="color:var(--gold2)">2.5D HDRP Metroidvania</strong> — full 3D world with movement constrained to the XY plane. Gothic castle exploration, fluid movement system, SotN-faithful RPG depth, and AAA visual fidelity via HDRP's full rendering stack.</p>
+      </div>
+
+      <div class="card" style="margin-top:0">
+        <h3>Current Status</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+          <div style="background:rgba(34,170,85,.1);border:1px solid rgba(34,170,85,.25);border-radius:4px;padding:10px;text-align:center">
+            <div style="font-family:'Cinzel',serif;font-size:22px;color:var(--green2)">27</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">C# Scripts</div>
+          </div>
+          <div style="background:rgba(136,51,204,.1);border:1px solid rgba(136,51,204,.25);border-radius:4px;padding:10px;text-align:center">
+            <div style="font-family:'Cinzel',serif;font-size:22px;color:var(--accent2)">17</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">Enemies</div>
+          </div>
+          <div style="background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.25);border-radius:4px;padding:10px;text-align:center">
+            <div style="font-family:'Cinzel',serif;font-size:22px;color:var(--gold2)">8</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">Weapons</div>
+          </div>
+          <div style="background:rgba(34,85,204,.1);border:1px solid rgba(34,85,204,.25);border-radius:4px;padding:10px;text-align:center">
+            <div style="font-family:'Cinzel',serif;font-size:22px;color:var(--blue2)">12</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">Armor Pieces</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>Zones — Castle Map</h3>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:14px;height:14px;border-radius:50%;background:var(--gold);flex-shrink:0"></div>
+            <div><span style="color:var(--white);font-size:14px">Entrance Hall</span><span style="color:var(--text2);font-size:12px;margin-left:8px">Zombies, Skeletons, Axe Knight</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:14px;height:14px;border-radius:50%;background:var(--blue);flex-shrink:0"></div>
+            <div><span style="color:var(--white);font-size:14px">Catacombs</span><span style="color:var(--text2);font-size:12px;margin-left:8px">Bone Archer, Warg, Harpy, Merman</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:14px;height:14px;border-radius:50%;background:var(--accent);flex-shrink:0"></div>
+            <div><span style="color:var(--white);font-size:14px">Cursed Library</span><span style="color:var(--text2);font-size:12px;margin-left:8px">Sorcerer, Gargoyle, Blood Skeleton, Scythe Knight</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:14px;height:14px;border-radius:50%;background:#888;flex-shrink:0"></div>
+            <div><span style="color:var(--white);font-size:14px">Clocktower</span><span style="color:var(--text2);font-size:12px;margin-left:8px">Gear Golem, Vampire Bat</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:14px;height:14px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
+            <div><span style="color:var(--white);font-size:14px">Throne Room</span><span style="color:var(--text2);font-size:12px;margin-left:8px">Dark Knight, Succubus</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:0">
+        <h3>Player Abilities</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px">
+          <div style="color:var(--green2)">✓ 8-frame input buffer</div>
+          <div style="color:var(--green2)">✓ Coyote time (0.1s)</div>
+          <div style="color:var(--green2)">✓ Variable jump height</div>
+          <div style="color:var(--green2)">✓ Wall jump / cling</div>
+          <div style="color:var(--green2)">✓ Wall slide</div>
+          <div style="color:var(--green2)">✓ Ground dash</div>
+          <div style="color:var(--green2)">✓ 3-hit combo attack</div>
+          <div style="color:var(--green2)">✓ Hitstop freeze</div>
+          <div style="color:var(--gold2)">🔒 Double jump</div>
+          <div style="color:var(--gold2)">🔒 Air dash</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Castle ASCII Map -->
+  <div class="card" style="margin-top:4px">
+    <h3>Castle Layout — ASCII</h3>
+    <pre style="font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.6;color:var(--text2);margin-top:8px;overflow-x:auto">
+<span style="color:#aaa">╔══════════════════════════════════════════════════════════════════════════════════════╗</span>
+<span style="color:#aaa">║</span>                    <span style="color:#cc2266">[ THRONE ROOM ]</span>  <span style="color:#555">——————————————</span>  <span style="color:#888">[ CLOCKTOWER ]</span>                     <span style="color:#aaa">║</span>
+<span style="color:#aaa">║</span>                          <span style="color:#555">│</span>                                    <span style="color:#555">│</span>                        <span style="color:#aaa">║</span>
+<span style="color:#aaa">║</span>  <span style="color:#8833cc">[ CURSED LIBRARY ]</span>  <span style="color:#555">—————</span>  <span style="color:#8833cc">[ UPPER GALLERY ]</span>  <span style="color:#555">—————</span>  <span style="color:#8833cc">[ OBSERVATORY ]</span>             <span style="color:#aaa">║</span>
+<span style="color:#aaa">║</span>          <span style="color:#555">│</span>                          <span style="color:#555">│</span>                                                   <span style="color:#aaa">║</span>
+<span style="color:#aaa">║</span>  <span style="color:#2255cc">[ CATACOMBS ]</span>  <span style="color:#555">—————————————</span>  <span style="color:#d4a017">[ ENTRANCE HALL ]</span>  <span style="color:#555">—</span>  <span style="color:#2255cc">[ UNDERGROUND RIVER ]</span>            <span style="color:#aaa">║</span>
+<span style="color:#aaa">║</span>                                        <span style="color:#d4a017">▲  PLAYER START</span>                               <span style="color:#aaa">║</span>
+<span style="color:#aaa">╚══════════════════════════════════════════════════════════════════════════════════════╝</span>
+    </pre>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════ ARCHITECTURE -->
+<section class="section" id="tab-architecture">
+  <div class="section-title"><span class="icon">🏗️</span> Architecture</div>
+
+  <div class="grid2" style="margin-bottom:20px">
+    <div class="card">
+      <h3>Directory Structure</h3>
+      <div class="file-tree" style="margin-top:8px">
+        <div><span class="dir">Assets/</span></div>
+        <div style="padding-left:16px"><span class="dir">Scripts/</span></div>
+        <div style="padding-left:32px"><span class="done">✓</span> <span class="dir">Core/</span> <span style="color:var(--text2);font-size:11px">GameManager.cs</span></div>
+        <div style="padding-left:32px"><span class="done">✓</span> <span class="dir">Player/</span></div>
+        <div style="padding-left:48px"><span style="color:var(--text2)">PlayerController, PlayerMovement</span></div>
+        <div style="padding-left:48px"><span style="color:var(--text2)">PlayerInputHandler, PlayerCombat</span></div>
+        <div style="padding-left:48px"><span style="color:var(--text2)">PlayerStats</span></div>
+        <div style="padding-left:48px"><span class="dir">States/</span> <span style="color:var(--text2);font-size:11px">8 states</span></div>
+        <div style="padding-left:32px"><span class="done">✓</span> <span class="dir">Enemies/</span></div>
+        <div style="padding-left:48px"><span style="color:var(--text2)">EnemyBase, Projectile</span></div>
+        <div style="padding-left:48px"><span class="dir">Types/</span> <span style="color:var(--text2);font-size:11px">Patrol, Flying, Ranged</span></div>
+        <div style="padding-left:32px"><span class="done">✓</span> <span class="dir">Systems/</span></div>
+        <div style="padding-left:48px"><span style="color:var(--text2)">VFXManager, CameraSystem, AudioManager</span></div>
+        <div style="padding-left:32px"><span class="done">✓</span> <span class="dir">Data/ScriptableObjects/</span></div>
+        <div style="padding-left:48px"><span style="color:var(--text2)">EnemyDataSO, WeaponDataSO, ArmorDataSO</span></div>
+        <div style="padding-left:32px"><span class="done">✓</span> <span class="dir">UI/</span> <span style="color:var(--text2);font-size:11px">HUDController.cs</span></div>
+        <div style="padding-left:32px"><span class="done">✓</span> <span class="dir">Utils/</span></div>
+        <div style="padding-left:48px"><span style="color:var(--text2)">StateMachine, EventBus, ObjectPool, MathUtils</span></div>
+        <div style="padding-left:16px"><span class="done">✓</span> <span class="dir">Shaders/HLSL/</span></div>
+        <div style="padding-left:32px"><span style="color:var(--text2)">DissolveEffect.hlsl, GothicLitExtension.hlsl</span></div>
+        <div style="padding-left:16px"><span class="done">✓</span> <span class="dir">VFX/</span> <span style="color:var(--text2);font-size:11px">5 VFX Graph setups</span></div>
+        <div style="padding-left:16px"><span class="done">✓</span> <span class="dir">Settings/</span> <span style="color:var(--text2);font-size:11px">HDRP config</span></div>
+        <div style="padding-left:16px"><span class="done">✓</span> <span class="dir">InputActions/</span></div>
+        <div><span class="done">✓</span> <span class="dir">Packages/manifest.json</span></div>
+        <div><span class="done">✓</span> <span style="color:var(--white)">SETUP.md</span> <span style="color:var(--text2);font-size:11px">full wiring guide</span></div>
+        <div><span class="done">✓</span> <span style="color:var(--white)">CLAUDE.md</span> <span style="color:var(--text2);font-size:11px">persistent AI context</span></div>
+        <div><span class="done">✓</span> <span class="dir">web-prototype/</span> <span style="color:var(--text2);font-size:11px">Phaser 3 reference</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="system-card">
+        <div class="sname">EventBus</div>
+        <div class="sfile">Utils/EventBus.cs</div>
+        <ul>
+          <li>Zero-heap-alloc typed events via <code style="color:var(--gold);font-size:11px">Action&lt;T&gt;</code></li>
+          <li>Value-type event structs (no GC pressure)</li>
+          <li>11 event types in catalogue</li>
+          <li>Subscribe / Unsubscribe / Emit API</li>
+        </ul>
+      </div>
+      <div class="system-card">
+        <div class="sname">StateMachine&lt;T&gt;</div>
+        <div class="sfile">Utils/StateMachine.cs</div>
+        <ul>
+          <li>Generic owner type, string-keyed states</li>
+          <li>Enter / Update / FixedUpdate / Exit hooks</li>
+          <li>Lock / Unlock for boss cutscenes</li>
+          <li>Used by: Player (8 states), Enemies</li>
+        </ul>
+      </div>
+      <div class="system-card">
+        <div class="sname">ObjectPool&lt;T&gt;</div>
+        <div class="sfile">Utils/ObjectPool.cs</div>
+        <ul>
+          <li>Wraps Unity's built-in <code style="color:var(--gold);font-size:11px">ObjectPool&lt;T&gt;</code></li>
+          <li>Pre-warm, active tracking, max-size cap</li>
+          <li>Used by: VFXManager (VisualEffect pool)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div class="system-card">
+      <div class="sname">PlayerMovement</div>
+      <div class="sfile">Player/PlayerMovement.cs</div>
+      <ul>
+        <li>CharacterController, XY-plane locked (Z=0)</li>
+        <li>Coyote time 0.1s grace period</li>
+        <li>Variable jump height (cut on release)</li>
+        <li>Wall jump/cling, wall slide (2.5 u/s)</li>
+        <li>Air dash (unlockable flag)</li>
+        <li>Separate accel/friction for ground/air</li>
+      </ul>
+    </div>
+    <div class="system-card">
+      <div class="sname">PlayerCombat</div>
+      <div class="sfile">Player/PlayerCombat.cs</div>
+      <ul>
+        <li><code style="color:var(--gold);font-size:11px">Physics.OverlapBoxNonAlloc</code> — no GC</li>
+        <li>Hitbox fires at animation keyframe time</li>
+        <li><code style="color:var(--gold);font-size:11px">Time.timeScale = 0</code> hitstop on hit</li>
+        <li>Weapon ScriptableObject hot-swap</li>
+        <li>LCK-based crit system (up to 25%)</li>
+        <li>Damage type resistance lookup</li>
+      </ul>
+    </div>
+    <div class="system-card">
+      <div class="sname">VFXManager</div>
+      <div class="sfile">Systems/VFXManager.cs</div>
+      <ul>
+        <li>Pooled <code style="color:var(--gold);font-size:11px">VisualEffect</code> queue</li>
+        <li>HDRP Bloom spike (death/level-up)</li>
+        <li>Vignette pulse (damage hit)</li>
+        <li>Chromatic aberration spike</li>
+        <li>MaterialPropertyBlock afterimage fade</li>
+        <li>All methods null-safe (safe to call any time)</li>
+      </ul>
+    </div>
+    <div class="system-card">
+      <div class="sname">CameraSystem</div>
+      <div class="sfile">Systems/CameraSystem.cs</div>
+      <ul>
+        <li>Cinemachine 3.x orthographic (size=6)</li>
+        <li>CinemachineImpulseSource for shake</li>
+        <li>Smooth lookahead (FacingDir × 1.8u)</li>
+        <li>Boss zoom coroutine (size 6→9)</li>
+        <li>EventBus-driven (no manual calls needed)</li>
+      </ul>
+    </div>
+    <div class="system-card">
+      <div class="sname">EnemyBase</div>
+      <div class="sfile">Enemies/EnemyBase.cs</div>
+      <ul>
+        <li>Abstract MonoBehaviour, 3 AI subclasses</li>
+        <li>HDRP dissolve death coroutine (1.2s)</li>
+        <li>MaterialPropertyBlock emissive hit flash</li>
+        <li>No-alloc TakeDamage with resistance lookup</li>
+        <li>EventBus emit on death (exp reward)</li>
+      </ul>
+    </div>
+    <div class="system-card">
+      <div class="sname">HUDController</div>
+      <div class="sfile">UI/HUDController.cs</div>
+      <ul>
+        <li>Unity UI Toolkit (UIElements)</li>
+        <li>HP/MP/EXP bars via <code style="color:var(--gold);font-size:11px">style.width percent</code></li>
+        <li>HP danger color ramp (&lt;25% red, &lt;50% orange)</li>
+        <li>Boss bar show/hide with fade</li>
+        <li>Floating notification system</li>
+        <li>HP bar shake coroutine on damage</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ ENEMIES -->
+<section class="section" id="tab-enemies">
+  <div class="section-title"><span class="icon">💀</span> Enemy Roster — 17 Enemies</div>
+
+  <!-- Zone filter -->
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+    <button onclick="filterEnemies('all')"        class="zone-btn active-zone" data-zone="all">All Zones</button>
+    <button onclick="filterEnemies('entrance')"   class="zone-btn" data-zone="entrance">Entrance Hall</button>
+    <button onclick="filterEnemies('catacombs')"  class="zone-btn" data-zone="catacombs">Catacombs</button>
+    <button onclick="filterEnemies('library')"    class="zone-btn" data-zone="library">Cursed Library</button>
+    <button onclick="filterEnemies('clocktower')" class="zone-btn" data-zone="clocktower">Clocktower</button>
+    <button onclick="filterEnemies('throne')"     class="zone-btn" data-zone="throne">Throne Room</button>
+  </div>
+  <style>
+    .zone-btn {
+      background:var(--bg2); border:1px solid var(--border);
+      color:var(--text2); padding:6px 14px; border-radius:4px;
+      cursor:pointer; font-family:'Crimson Text',serif; font-size:14px;
+      transition:all .15s;
+    }
+    .zone-btn:hover,.active-zone { border-color:var(--accent); color:var(--accent2); background:rgba(136,51,204,.1); }
+  </style>
+
+  <div class="grid4" id="enemy-grid"></div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ WEAPONS -->
+<section class="section" id="tab-weapons">
+  <div class="section-title"><span class="icon">⚔️</span> Weapons — 8 Items</div>
+  <div class="grid4" id="weapon-grid"></div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ ARMOR -->
+<section class="section" id="tab-armor">
+  <div class="section-title"><span class="icon">🛡️</span> Armor — 12 Pieces</div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px" id="slot-filter">
+    <button onclick="filterArmor('all')"       class="zone-btn active-zone" data-slot="all">All Slots</button>
+    <button onclick="filterArmor('helmet')"    class="zone-btn" data-slot="helmet">Helmets</button>
+    <button onclick="filterArmor('armor')"     class="zone-btn" data-slot="armor">Body Armor</button>
+    <button onclick="filterArmor('cloak')"     class="zone-btn" data-slot="cloak">Cloaks</button>
+    <button onclick="filterArmor('boots')"     class="zone-btn" data-slot="boots">Boots</button>
+    <button onclick="filterArmor('accessory')" class="zone-btn" data-slot="accessory">Accessories</button>
+  </div>
+
+  <div class="grid4" id="armor-grid"></div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ RPG -->
+<section class="section" id="tab-rpg">
+  <div class="section-title"><span class="icon">📊</span> RPG System</div>
+
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <h3>Primary Stats</h3>
+        <table style="width:100%;font-size:14px;border-collapse:collapse;margin-top:8px">
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:8px 4px;color:var(--gold2);font-family:'Cinzel',serif;font-size:13px">STR</td>
+            <td style="padding:8px;color:var(--text2)">Physical attack multiplier, melee damage</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:8px 4px;color:var(--red2);font-family:'Cinzel',serif;font-size:13px">CON</td>
+            <td style="padding:8px;color:var(--text2)">HP growth per level, physical defense</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:8px 4px;color:var(--blue2);font-family:'Cinzel',serif;font-size:13px">INT</td>
+            <td style="padding:8px;color:var(--text2)">MP growth, spell power multiplier</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 4px;color:var(--green2);font-family:'Cinzel',serif;font-size:13px">LCK</td>
+            <td style="padding:8px;color:var(--text2)">Crit rate (max 25%), item drop rate, damage variance</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>Sample Character — LVL 1</h3>
+        <div style="margin-top:8px">
+          <div class="bar-wrap">
+            <span class="blabel" style="color:var(--red2)">HP</span>
+            <div class="bar-track"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,#aa1111,#ee3333);box-shadow:0 0 6px #ff4444"></div></div>
+            <span class="bval">120</span>
+          </div>
+          <div class="bar-wrap">
+            <span class="blabel" style="color:var(--blue2)">MP</span>
+            <div class="bar-track"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,#1133aa,#2255dd);box-shadow:0 0 6px #4488ff"></div></div>
+            <span class="bval">50</span>
+          </div>
+          <div class="bar-wrap">
+            <span class="blabel" style="color:var(--gold)">ATK</span>
+            <div class="bar-track"><div class="bar-fill" style="width:20%;background:linear-gradient(90deg,#aa8800,#ddcc00)"></div></div>
+            <span class="bval">10</span>
+          </div>
+          <div class="bar-wrap">
+            <span class="blabel" style="color:var(--text2)">DEF</span>
+            <div class="bar-track"><div class="bar-fill" style="width:10%;background:var(--text2)"></div></div>
+            <span class="bval">5</span>
+          </div>
+        </div>
+
+        <div id="lvl-sim" style="margin-top:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--text2)">Simulate Level:</span>
+            <input type="range" min="1" max="50" value="1" id="lvl-slider" style="flex:1;accent-color:var(--accent)">
+            <span id="lvl-display" style="font-family:'Cinzel',serif;color:var(--gold2);font-size:16px;min-width:50px">LVL 1</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-family:'JetBrains Mono',monospace;font-size:12px">
+            <div style="background:var(--bg3);border:1px solid var(--border);padding:8px;border-radius:4px;text-align:center">
+              <div id="sim-hp" style="color:var(--red2);font-size:16px;font-weight:bold">120</div>
+              <div style="color:var(--text2);font-size:10px;margin-top:2px">MAX HP</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);padding:8px;border-radius:4px;text-align:center">
+              <div id="sim-mp" style="color:var(--blue2);font-size:16px;font-weight:bold">50</div>
+              <div style="color:var(--text2);font-size:10px;margin-top:2px">MAX MP</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);padding:8px;border-radius:4px;text-align:center">
+              <div id="sim-atk" style="color:var(--gold2);font-size:16px;font-weight:bold">10</div>
+              <div style="color:var(--text2);font-size:10px;margin-top:2px">ATK</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);padding:8px;border-radius:4px;text-align:center">
+              <div id="sim-exp" style="color:var(--accent2);font-size:16px;font-weight:bold">100</div>
+              <div style="color:var(--text2);font-size:10px;margin-top:2px">EXP NEED</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="rpg-formula">
+        <div><span class="comment">// ── Damage Formula (CalcDamage) ─────────────────</span></div>
+        <div><span class="keyword">float</span> base = <span class="fn">Max</span>(<span class="value">1</span>, atk - <span class="fn">Floor</span>(def × <span class="value">0.5</span>));</div>
+        <div><span class="keyword">float</span> crit = <span class="fn">Clamp</span>(lck × <span class="value">0.5f</span>, <span class="value">0</span>, <span class="value">25</span>) / <span class="value">100f</span>;</div>
+        <div><span class="keyword">bool</span>  isCrit = random &lt; crit;</div>
+        <div><span class="keyword">float</span> v = <span class="value">1 ± 10%</span> variance;</div>
+        <div><span class="keyword">int</span>   dmg = <span class="fn">Floor</span>(base × v × (isCrit ? <span class="value">2</span> : <span class="value">1</span>));</div>
+        <div>&nbsp;</div>
+        <div><span class="comment">// ── EXP Curve ──────────────────────────────────</span></div>
+        <div>expNeeded = <span class="fn">Floor</span>(<span class="value">100</span> × <span class="value">1.45</span>^(level - <span class="value">1</span>));</div>
+        <div>&nbsp;</div>
+        <div><span class="comment">// ── Level-Up Stat Growth ────────────────────────</span></div>
+        <div>maxHp  += <span class="fn">Floor</span>(<span class="value">5</span>  + con × <span class="value">0.4</span> + rand × <span class="value">4</span>);</div>
+        <div>maxMp  += <span class="fn">Floor</span>(<span class="value">2</span>  + int × <span class="value">0.25</span> + rand × <span class="value">3</span>);</div>
+        <div>atk    += <span class="fn">Floor</span>(<span class="value">0.3</span> + str × <span class="value">0.05</span>);</div>
+        <div>def    += <span class="fn">Floor</span>(<span class="value">0.2</span> + con × <span class="value">0.04</span>);</div>
+        <div>str++; con++; int++;</div>
+        <div>if (rand > <span class="value">0.7</span>) lck++;   <span class="comment">// luck: rare growth</span></div>
+        <div>hp = maxHp; mp = maxMp; <span class="comment">// full heal</span></div>
+      </div>
+
+      <div class="card">
+        <h3>EXP Curve Visualization</h3>
+        <canvas id="exp-chart" width="400" height="180" style="width:100%;margin-top:8px;border-radius:4px"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Damage Types & Resistances</h3>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+          <div style="text-align:center;padding:8px;background:rgba(255,100,0,.1);border:1px solid rgba(255,100,0,.25);border-radius:4px">
+            <div style="font-size:20px">🔥</div>
+            <div style="font-size:12px;color:var(--gold2);margin-top:4px">Fire</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(100,180,255,.1);border:1px solid rgba(100,180,255,.25);border-radius:4px">
+            <div style="font-size:20px">❄️</div>
+            <div style="font-size:12px;color:var(--blue2);margin-top:4px">Ice</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,0,.1);border:1px solid rgba(255,255,0,.2);border-radius:4px">
+            <div style="font-size:20px">⚡</div>
+            <div style="font-size:12px;color:#ffff88;margin-top:4px">Lightning</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(100,0,200,.15);border:1px solid rgba(100,0,200,.3);border-radius:4px">
+            <div style="font-size:20px">☠️</div>
+            <div style="font-size:12px;color:var(--accent2);margin-top:4px">Dark</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(255,255,200,.08);border:1px solid rgba(255,255,200,.2);border-radius:4px">
+            <div style="font-size:20px">✝️</div>
+            <div style="font-size:12px;color:#ffffaa;margin-top:4px">Holy</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:rgba(0,180,50,.1);border:1px solid rgba(0,180,50,.25);border-radius:4px">
+            <div style="font-size:20px">💀</div>
+            <div style="font-size:12px;color:var(--green2);margin-top:4px">Poison</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ HDRP -->
+<section class="section" id="tab-hdrp">
+  <div class="section-title"><span class="icon">✨</span> HDRP AAA Features</div>
+
+  <div class="card" style="margin-bottom:20px">
+    <h3>Unity Packages Active</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+      <span class="pill gold">HDRP 16.x</span>
+      <span class="pill gold">VFX Graph 16.x</span>
+      <span class="pill">Cinemachine 3.1</span>
+      <span class="pill">Input System 1.8</span>
+      <span class="pill">Animation Rigging 1.3</span>
+      <span class="pill">Timeline 1.8</span>
+      <span class="pill blue">UI Toolkit 2.0</span>
+      <span class="pill">TextMeshPro 3.0</span>
+      <span class="pill green">Burst Compiler 1.8</span>
+      <span class="pill green">Addressables 1.22</span>
+    </div>
+  </div>
+
+  <table class="feature-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>File / System</th>
+        <th>How It Works</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="fname">Enemy Dissolve Death</td><td class="ffile">DissolveEffect.hlsl → ShaderGraph</td><td class="fdesc">Noise-threshold alpha clip driven by MaterialPropertyBlock._DissolveAmount 0→1 over 1.2s coroutine. HDR glowing edge on dissolve boundary.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Weapon Trail VFX</td><td class="ffile">WeaponSwing.vfx + WeaponTrailFade_float</td><td class="fdesc">Particle strip output with UV stretch along trail length. Scale, color, and intensity exposed as VFX Graph properties. Ramps up with combo index.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Bloom Spike</td><td class="ffile">VFXManager.cs</td><td class="fdesc">HDRP Volume Bloom.intensity overridden in coroutine. Spikes to 4× on enemy death, level-up. Returns to baseline (0.6) over 0.3–0.6s.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Vignette Hit Pulse</td><td class="ffile">VFXManager.cs</td><td class="fdesc">Vignette.intensity pulses 0.2→0.7 on player damage. Lerped back over 0.3s. Reactive to PlayerDamagedEvent on EventBus.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Chromatic Aberration</td><td class="ffile">VFXManager.cs</td><td class="fdesc">CA.intensity spikes to 0.8–1.0 on hit/boss ability, lerps back over 0.12–0.2s. Combined with vignette for max impact on damage.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Afterimage Dash Trail</td><td class="ffile">PlayerController.cs</td><td class="fdesc">Coroutine spawns ghost mesh every 40ms during dash. Each ghost fades via MaterialPropertyBlock alpha over 0.3s.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Hitstop Freeze Frames</td><td class="ffile">AttackState.cs</td><td class="fdesc">Time.timeScale = 0 for 33ms (2 frames at 60fps) on each attack hit. Resumed via WaitForSecondsRealtime coroutine.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Camera Shake</td><td class="ffile">CameraSystem.cs</td><td class="fdesc">CinemachineImpulseSource.GenerateImpulse() fired on EventBus CameraShakeEvent. Boss shake uses GenerateImpulseWithDuration.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Rim Lighting</td><td class="ffile">GothicRimLight_float (HLSL)</td><td class="fdesc">ShaderGraph custom function. Fresnel-based rim glow (NdotV), HDR intensity 2–8. Applied to player + boss character materials.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Cape Wind Deformation</td><td class="ffile">CapeWindDeformation_float (HLSL)</td><td class="fdesc">Vertex shader sin-wave deformation with ClothMask gradient (0=pinned shoulder, 1=free hem). Driven by Time in shader.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Fake SSS for Creatures</td><td class="ffile">FakeSSSGothic_float (HLSL)</td><td class="fdesc">Back-face light transmission approximation. Blood-red color for vampire/flesh enemies. No full SSS overhead.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Screen Distortion</td><td class="ffile">ScreenDistortion_float (HLSL)</td><td class="fdesc">UV distortion via sin wave on screen-space quad. Used for hit ripple and boss ability screen warp effects.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Death Burst VFX</td><td class="ffile">VFXManager → DeathBurst.vfx</td><td class="fdesc">GPU particle burst 60–150 particles, HDR color per enemy type, secondary smoke trail, bloom spike trigger on death.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Emissive Hit Flash</td><td class="ffile">EnemyBase.cs</td><td class="fdesc">MaterialPropertyBlock._EmissiveColor set to white×8 for 50ms on hit, then reset to black. Zero-GC via cached MPB.</td><td class="fstatus">✓ DONE</td></tr>
+      <tr><td class="fname">Boss Zoom</td><td class="ffile">CameraSystem.cs</td><td class="fdesc">CinemachineCamera.Lens.OrthographicSize lerps 6→9 over 1.5s on BossStartedEvent, returns to 6 over 2s on defeat.</td><td class="fstatus">✓ DONE</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ornament">✦ ✦ ✦</div>
+
+  <div class="grid3">
+    <div class="card">
+      <h3>VFX Graph Effects (5)</h3>
+      <ul style="list-style:none;font-size:13px;line-height:2">
+        <li>⚡ HitSpark.vfx — weapon impact</li>
+        <li>💥 DeathBurst.vfx — enemy death</li>
+        <li>💨 DashBurst.vfx — player dash</li>
+        <li>✦ WeaponSwing.vfx — trail arc</li>
+        <li>🌟 LevelUpBurst.vfx — level-up</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>HLSL Custom Functions (6)</h3>
+      <ul style="list-style:none;font-size:13px;line-height:2">
+        <li>🔥 DissolveEffect_float</li>
+        <li>⚔️ WeaponTrailFade_float</li>
+        <li>💡 GothicRimLight_float</li>
+        <li>🩸 FakeSSSGothic_float</li>
+        <li>🌀 CapeWindDeformation_float</li>
+        <li>📡 ScreenDistortion_float</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>HDRP Post Processing</h3>
+      <ul style="list-style:none;font-size:13px;line-height:2">
+        <li>🌸 Bloom (dynamic intensity)</li>
+        <li>🔴 Vignette (hit pulse)</li>
+        <li>🌈 Chromatic Aberration</li>
+        <li>🎨 Color Adjustments (screen flash)</li>
+        <li>🎬 Motion Blur (subtle, 0.05 clamp)</li>
+        <li>📽️ Film Grain (0.08 intensity)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ HUD -->
+<section class="section" id="tab-hud">
+  <div class="section-title"><span class="icon">🖥️</span> Live HUD Preview</div>
+  <p style="color:var(--text2);margin-bottom:16px;font-size:14px">Interactive HUD demo — click buttons to simulate game events. This is the UI system running in the browser as a design reference for the Unity UI Toolkit implementation.</p>
+  <iframe id="hud-preview-frame" src="about:blank" title="HUD Preview" scrolling="no"></iframe>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ ROADMAP -->
+<section class="section" id="tab-roadmap">
+  <div class="section-title"><span class="icon">🗺️</span> Phase Roadmap</div>
+
+  <div class="card">
+    <div class="phase-row">
+      <div class="phase-dot done">✓</div>
+      <div class="phase-content">
+        <h4>Phase 1 — Core Framework</h4>
+        <p>StateMachine, EventBus, ObjectPool, PlayerStats, GameState, RPG damage formulas, EXP curve.</p>
+        <div class="tags">
+          <span class="phase-tag done">StateMachine.cs</span>
+          <span class="phase-tag done">EventBus.cs</span>
+          <span class="phase-tag done">PlayerStats.cs</span>
+          <span class="phase-tag done">GameManager.cs</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-dot done">✓</div>
+      <div class="phase-content">
+        <h4>Phase 2 — Movement, Combat, Enemy Roster, Data Layer</h4>
+        <p>Full 8-state player FSM, PlayerMovement (coyote, wall-jump, air-dash), PlayerCombat (no-alloc hitbox, hitstop). 17 enemy defs, 8 weapons, 12 armor pieces as ScriptableObjects.</p>
+        <div class="tags">
+          <span class="phase-tag done">PlayerMovement.cs</span>
+          <span class="phase-tag done">PlayerCombat.cs</span>
+          <span class="phase-tag done">8 Player States</span>
+          <span class="phase-tag done">EnemyDataSO × 17</span>
+          <span class="phase-tag done">WeaponDataSO × 8</span>
+          <span class="phase-tag done">ArmorDataSO × 12</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-dot done">✓</div>
+      <div class="phase-content">
+        <h4>Engine Conversion — Phaser 3 → Unity HDRP</h4>
+        <p>Full C# rewrite. All TypeScript systems ported to Unity. HDRP VFX pipeline, Cinemachine, New Input System, UI Toolkit, ShaderGraph HLSL.</p>
+        <div class="tags">
+          <span class="phase-tag done">VFXManager.cs</span>
+          <span class="phase-tag done">CameraSystem.cs</span>
+          <span class="phase-tag done">HUDController.cs</span>
+          <span class="phase-tag done">DissolveEffect.hlsl</span>
+          <span class="phase-tag done">GothicLitExtension.hlsl</span>
+          <span class="phase-tag done">PlayerActions.inputactions</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-dot current">▶</div>
+      <div class="phase-content">
+        <h4>Phase 3 — Enemy AI Behavior Trees + Boss Multi-Phase</h4>
+        <p>Full behavior tree implementation for each AI type. Boss scripting system with phase transitions, intro cutscenes, arena-wide attacks, and defeat sequences.</p>
+        <div class="tags">
+          <span class="phase-tag">BehaviorTree.cs</span>
+          <span class="phase-tag">BossController.cs</span>
+          <span class="phase-tag">BossPhaseData SO</span>
+          <span class="phase-tag">PatrolBT node</span>
+          <span class="phase-tag">ChaseBT node</span>
+          <span class="phase-tag">AttackBT node</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-dot pending">4</div>
+      <div class="phase-content">
+        <h4>Phase 4 — Metroidvania Map System</h4>
+        <p>Room graph, transitions with loading screens, save statues, fog-of-war minimap, room state persistence (cleared enemies, opened doors).</p>
+        <div class="tags">
+          <span class="phase-tag">RoomGraph.cs</span>
+          <span class="phase-tag">RoomTransition.cs</span>
+          <span class="phase-tag">SaveStatue.cs</span>
+          <span class="phase-tag">MinimapSystem.cs</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-dot pending">5</div>
+      <div class="phase-content">
+        <h4>Phase 5 — Inventory, Equipment, Spell System</h4>
+        <p>Full UI Toolkit inventory screen, drag-drop equip slots, spell casting with MP cost, spell animation combos, sub-weapon system.</p>
+        <div class="tags">
+          <span class="phase-tag">InventoryUI.cs</span>
+          <span class="phase-tag">SpellSystem.cs</span>
+          <span class="phase-tag">EquipScreen.uxml</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-dot pending">6</div>
+      <div class="phase-content">
+        <h4>Phase 6 — Full Audio Pipeline</h4>
+        <p>Dynamic music zones, adaptive layering (combat intensity → layer adds), reverb zones, foley system for footsteps/weapon impacts.</p>
+        <div class="tags">
+          <span class="phase-tag">MusicZone.cs</span>
+          <span class="phase-tag">AdaptiveMixer.cs</span>
+          <span class="phase-tag">FootstepSystem.cs</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-dot pending">7</div>
+      <div class="phase-content">
+        <h4>Phase 7 — Level Art Pipeline</h4>
+        <p>Tile-based level editor workflow, 2.5D parallax layers, HDRP lighting per-zone (volumetric torches, god rays), decal system for environmental detail.</p>
+        <div class="tags">
+          <span class="phase-tag">ParallaxSystem.cs</span>
+          <span class="phase-tag">ZoneLighting.cs</span>
+          <span class="phase-tag">TileRenderer</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ── Tab navigation ─────────────────────────────────────────────────────────────
+document.getElementById('nav').addEventListener('click', e => {
+  if (!e.target.dataset.tab) return;
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById('tab-' + e.target.dataset.tab).classList.add('active');
+  if (e.target.dataset.tab === 'hud') loadHUD();
+  if (e.target.dataset.tab === 'rpg') drawExpChart();
+});
+
+// ── Enemy Data ─────────────────────────────────────────────────────────────────
+const ENEMIES = [
+  { id:'zombie',         name:'Zombie',         zone:'entrance', zoneLabel:'Entrance Hall', ai:'patrol', hp:30,  atk:8,  def:2,  exp:15,  desc:'Shambling undead. Slow but armored by rot.',                     resist:[{t:'holy',r:'WEAK'}] },
+  { id:'skeleton',       name:'Skeleton',       zone:'entrance', zoneLabel:'Entrance Hall', ai:'patrol', hp:20,  atk:12, def:0,  exp:20,  desc:'Reanimates from dark energy. Weak to holy.',                     resist:[{t:'holy',r:'WEAK'}] },
+  { id:'axe_knight',     name:'Axe Knight',     zone:'entrance', zoneLabel:'Entrance Hall', ai:'patrol', hp:80,  atk:22, def:14, exp:60,  desc:'Hurls axes in a high arc.',                                      resist:[{t:'fire',r:'IMMUNE'}] },
+  { id:'medusa_head',    name:'Medusa Head',    zone:'entrance', zoneLabel:'Entrance Hall', ai:'flying', hp:15,  atk:18, def:0,  exp:30,  desc:'Flying serpent head. Inflicts petrify on contact.',              resist:[{t:'dark',r:'IMMUNE'}] },
+  { id:'ghost',          name:'Ghost',          zone:'entrance', zoneLabel:'Entrance Hall', ai:'flying', hp:25,  atk:14, def:0,  exp:25,  desc:'Phase-shifting. Immune to most physical attacks.',               resist:[{t:'physical',r:'IMMUNE'},{t:'holy',r:'WEAK'}] },
+  { id:'bone_archer',    name:'Bone Archer',    zone:'catacombs',zoneLabel:'Catacombs',     ai:'ranged', hp:35,  atk:20, def:4,  exp:40,  desc:'Fires volleys from afar. Stays at distance.',                   resist:[{t:'holy',r:'WEAK'}] },
+  { id:'warg',           name:'Warg',           zone:'catacombs',zoneLabel:'Catacombs',     ai:'chase',  hp:55,  atk:25, def:6,  exp:50,  desc:'Demon wolf. Lunges across the screen in a single bound.',       resist:[] },
+  { id:'harpy',          name:'Harpy',          zone:'catacombs',zoneLabel:'Catacombs',     ai:'flying', hp:45,  atk:28, def:2,  exp:55,  desc:'Swoops from above, inflicts bleeding.',                         resist:[] },
+  { id:'merman',         name:'Merman',         zone:'catacombs',zoneLabel:'Catacombs',     ai:'patrol', hp:60,  atk:18, def:10, exp:45,  desc:'Emerges from waterways. Immune to ice.',                        resist:[{t:'ice',r:'IMMUNE'},{t:'fire',r:'WEAK'}] },
+  { id:'sorcerer',       name:'Sorcerer',       zone:'library',  zoneLabel:'Cursed Library',ai:'ranged', hp:70,  atk:35, def:3,  exp:80,  desc:'Casts three-way ice bolts and teleports short range.',          resist:[{t:'dark',r:'IMMUNE'}] },
+  { id:'gargoyle',       name:'Gargoyle',       zone:'library',  zoneLabel:'Cursed Library',ai:'flying', hp:90,  atk:30, def:18, exp:90,  desc:'Stone sentinel. Weak to lightning.',                            resist:[{t:'lightning',r:'WEAK'},{t:'physical',r:'IMMUNE'}] },
+  { id:'blood_skeleton', name:'Blood Skeleton', zone:'library',  zoneLabel:'Cursed Library',ai:'patrol', hp:200, atk:18, def:0,  exp:5,   desc:'Reforms from blood. Cannot be killed without holy.',             resist:[{t:'physical',r:'IMMUNE'}] },
+  { id:'scythe_knight',  name:'Scythe Knight',  zone:'library',  zoneLabel:'Cursed Library',ai:'chase',  hp:120, atk:40, def:20, exp:110, desc:'Phantom knight. Drains HP on hit. Cursed blade negates healing.',resist:[{t:'dark',r:'IMMUNE'}] },
+  { id:'gear_golem',     name:'Gear Golem',     zone:'clocktower',zoneLabel:'Clocktower',   ai:'patrol', hp:200, atk:45, def:30, exp:150, desc:'Mechanical guardian. Weak to lightning. Exposed core on slam.',  resist:[{t:'lightning',r:'WEAK'}] },
+  { id:'vampire_bat',    name:'Vampire Bat',    zone:'clocktower',zoneLabel:'Clocktower',   ai:'flying', hp:18,  atk:12, def:0,  exp:12,  desc:'Swarms in clusters. Inflicts HP drain.',                        resist:[] },
+  { id:'dark_knight',    name:'Dark Knight',    zone:'throne',   zoneLabel:'Throne Room',   ai:'chase',  hp:280, atk:55, def:35, exp:200, desc:'Fallen paladin. Three-hit combo, shadow step dodge.',           resist:[{t:'dark',r:'IMMUNE'},{t:'holy',r:'WEAK'}] },
+  { id:'succubus',       name:'Succubus',       zone:'throne',   zoneLabel:'Throne Room',   ai:'flying', hp:180, atk:48, def:10, exp:180, desc:'Charm attack stuns. Drains HP with kiss embrace.',              resist:[{t:'dark',r:'IMMUNE'},{t:'holy',r:'WEAK'}] },
+];
+
+const zoneClass = { entrance:'z-entrance', catacombs:'z-catacombs', library:'z-library', clocktower:'z-clocktower', throne:'z-throne' };
+const aiClass   = { patrol:'ai-patrol', flying:'ai-flying', ranged:'ai-ranged', chase:'ai-chase', boss:'ai-boss' };
+
+function renderEnemies(filter='all') {
+  const grid = document.getElementById('enemy-grid');
+  grid.innerHTML = '';
+  ENEMIES.filter(e => filter === 'all' || e.zone === filter).forEach(e => {
+    grid.innerHTML += `
+    <div class="enemy-card">
+      <div class="ename">${e.name}</div>
+      <div class="ezone"><span class="zone-badge ${zoneClass[e.zone]}">${e.zoneLabel}</span></div>
+      <div class="estats">
+        <span class="estat-label">HP</span><span class="estat-val" style="color:var(--red2)">${e.hp}</span>
+        <span class="estat-label">ATK</span><span class="estat-val" style="color:var(--gold2)">${e.atk}</span>
+        <span class="estat-label">DEF</span><span class="estat-val">${e.def}</span>
+        <span class="estat-label">EXP</span><span class="estat-val" style="color:var(--accent2)">${e.exp}</span>
+      </div>
+      <div><span class="eai ${aiClass[e.ai]}">${e.ai.toUpperCase()}</span></div>
+      <div class="edesc">${e.desc}</div>
+      <div class="eresist">${e.resist.map(r => `<span class="resist-badge ${r.r === 'WEAK' ? 'r-weak' : 'r-immune'}">${r.r === 'WEAK' ? '⬇' : '⬆'} ${r.t}</span>`).join('')}</div>
+    </div>`;
+  });
+}
+
+function filterEnemies(zone) {
+  document.querySelectorAll('[data-zone]').forEach(b => b.classList.remove('active-zone'));
+  document.querySelector(`[data-zone="${zone}"]`)?.classList.add('active-zone');
+  renderEnemies(zone);
+}
+
+renderEnemies();
+
+// ── Weapon Data ────────────────────────────────────────────────────────────────
+const WEAPONS = [
+  { name:'Short Sword',    type:'SWORD',  atk:12, range:45, combo:2, dmgType:'Physical', trail:'#ccccff', special:null,          desc:'Fast, reliable, no frills.' },
+  { name:'Vampire Killer', type:'WHIP',   atk:18, range:90, combo:1, dmgType:'Holy',     trail:'#ffee00', special:'whip_cross',   desc:'Legendary holy whip. Extended range.' },
+  { name:'Claymore',       type:'SWORD',  atk:32, range:58, combo:2, dmgType:'Physical', trail:'#4488ff', special:null,          desc:'Massive two-hander. Devastating cleave.' },
+  { name:'Battle Axe',     type:'AXE',    atk:28, range:50, combo:1, dmgType:'Physical', trail:'#ff6600', special:'axe_throw',    desc:'Can be thrown in a high arc as sub-weapon.' },
+  { name:'Shadow Blade',   type:'SWORD',  atk:38, range:52, combo:3, dmgType:'Dark',     trail:'#9900ff', special:'dark_slash',   desc:'3-hit combo releases shadow shockwave on final hit.' },
+  { name:'Holy Lance',     type:'SPEAR',  atk:30, range:72, combo:2, dmgType:'Holy',     trail:'#ffffff', special:'lance_charge', desc:'Thrusting attack pierces multiple enemies.' },
+  { name:"Death's Scythe", type:'SCYTHE', atk:48, range:65, combo:2, dmgType:'Dark',     trail:'#00ff44', special:'soul_reap',    desc:'Drains HP equal to 30% of damage dealt.' },
+  { name:'Flame Sword',    type:'SWORD',  atk:35, range:55, combo:2, dmgType:'Fire',     trail:'#ff3300', special:'fire_wave',    desc:'Ignites enemies. Fire wave on special.' },
+];
+
+const dmgTypeColor = { Physical:'#ccccff', Holy:'#ffff88', Dark:'#cc88ff', Fire:'#ff6633', Ice:'#88ccff', Lightning:'#ffff44' };
+
+function renderWeapons() {
+  const grid = document.getElementById('weapon-grid');
+  grid.innerHTML = '';
+  WEAPONS.forEach(w => {
+    grid.innerHTML += `
+    <div class="weapon-card">
+      <div class="wname">${w.name}</div>
+      <div class="wtype">${w.type} · <span style="color:${dmgTypeColor[w.dmgType]||'#aaa'}">${w.dmgType}</span></div>
+      <div class="stat-row"><span class="k">ATK</span><span class="v" style="color:var(--gold2)">${w.atk}</span></div>
+      <div class="stat-row"><span class="k">Range</span><span class="v">${w.range}px</span></div>
+      <div class="stat-row"><span class="k">Combo</span><span class="v">${w.combo} hits</span></div>
+      <div class="trail-swatch" style="background:${w.trail};color:${w.trail}"></div>
+      ${w.special ? `<span class="special-badge">⚡ ${w.special.replace(/_/g,' ')}</span>` : ''}
+      <div class="wdesc">${w.desc}</div>
+    </div>`;
+  });
+}
+renderWeapons();
+
+// ── Armor Data ─────────────────────────────────────────────────────────────────
+const ARMOR = [
+  { name:'Iron Helm',        slot:'helmet',    def:8,  mods:{CON:2,HP:20},             passive:null,            desc:'Basic protection. Heavy but reliable.' },
+  { name:'Circlet of Wisdom',slot:'helmet',    def:3,  mods:{INT:8,LCK:2,MP:40},       passive:null,            desc:'Amplifies spellcasting. Faint violet glow.' },
+  { name:'Leather Armor',    slot:'armor',     def:6,  mods:{CON:1,HP:15},             passive:null,            desc:'Lightweight, decent coverage.' },
+  { name:'Knight Armor',     slot:'armor',     def:22, mods:{STR:2,CON:4,INT:-2,HP:60,MP:-20}, passive:null,   desc:'Full plate. Slows movement slightly.' },
+  { name:'Dark Robe',        slot:'armor',     def:8,  mods:{INT:12,LCK:4,MP:80},      passive:'mp_regen',      desc:'Woven from void-silk. Regenerates 1 MP/sec.' },
+  { name:'Dragon Scale Mail',slot:'armor',     def:34, mods:{STR:3,CON:5,HP:100},      passive:null,            desc:'Forged from elder dragon scales. Legendary.' },
+  { name:"Traveler's Cloak", slot:'cloak',     def:2,  mods:{LCK:3},                   passive:null,            desc:'Slightly increases item drop rates.' },
+  { name:'Cloak of Shadows', slot:'cloak',     def:6,  mods:{INT:4,LCK:8,MP:30},       passive:'dash_shadow',   desc:'Leaves shadow afterimages on dash.' },
+  { name:'Iron Boots',       slot:'boots',     def:5,  mods:{STR:1,CON:1,HP:10},       passive:null,            desc:'Stomp attack available from above.' },
+  { name:'Swift Boots',      slot:'boots',     def:2,  mods:{LCK:5},                   passive:'movement_speed_up', desc:'+20% movement speed. Alchemized leather.' },
+  { name:'Ring of Varda',    slot:'accessory', def:0,  mods:{STR:5,CON:5,INT:5,LCK:5,HP:50,MP:30}, passive:null, desc:'Balanced legendary ring. Minor all-stat boost.' },
+  { name:'Bloodstone',       slot:'accessory', def:0,  mods:{},                         passive:'lifesteal_10',  desc:'Converts 10% of damage dealt into HP.' },
+];
+
+function renderArmor(filter='all') {
+  const grid = document.getElementById('armor-grid');
+  grid.innerHTML = '';
+  ARMOR.filter(a => filter === 'all' || a.slot === filter).forEach(a => {
+    const mods = Object.entries(a.mods).map(([k,v]) =>
+      `<span class="stat-mod ${v>0?'pos':'neg'}">${v>0?'+':''}${v} ${k}</span>`
+    ).join('');
+    grid.innerHTML += `
+    <div class="armor-card">
+      <div class="aname">${a.name}</div>
+      <div class="aslot">${a.slot} · DEF +${a.def}</div>
+      <div class="stat-mods">${mods}</div>
+      ${a.passive ? `<span class="passive-badge">✦ ${a.passive.replace(/_/g,' ')}</span>` : ''}
+      <div class="adesc">${a.desc}</div>
+    </div>`;
+  });
+}
+
+function filterArmor(slot) {
+  document.querySelectorAll('#slot-filter [data-slot]').forEach(b => b.classList.remove('active-zone'));
+  document.querySelector(`[data-slot="${slot}"]`)?.classList.add('active-zone');
+  renderArmor(slot);
+}
+renderArmor();
+
+// ── EXP Chart ─────────────────────────────────────────────────────────────────
+function drawExpChart() {
+  const canvas = document.getElementById('exp-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  const levels = Array.from({length:30},(_,i)=>i+1);
+  const exp    = levels.map(l => Math.floor(100 * Math.pow(1.45, l-1)));
+  const maxExp = exp[exp.length-1];
+
+  // Background
+  ctx.fillStyle = '#0d0820'; ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle = '#2a1a4a'; ctx.lineWidth = 1;
+  for (let i=0;i<=4;i++) {
+    const y = H-20 - (i/4)*(H-40);
+    ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(W-10,y); ctx.stroke();
+    ctx.fillStyle='#554477'; ctx.font='10px JetBrains Mono';
+    ctx.fillText(Math.floor(maxExp*i/4/1000)+'k', 2, y+4);
+  }
+
+  // Curve
+  const grad = ctx.createLinearGradient(0,0,W,0);
+  grad.addColorStop(0,'#8833cc'); grad.addColorStop(1,'#ffdd55');
+  ctx.strokeStyle = grad; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  levels.forEach((l,i) => {
+    const x = 40 + (i/(levels.length-1))*(W-50);
+    const y = H-20 - (exp[i]/maxExp)*(H-40);
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // Fill
+  ctx.beginPath();
+  levels.forEach((l,i) => {
+    const x = 40+(i/(levels.length-1))*(W-50);
+    const y = H-20-(exp[i]/maxExp)*(H-40);
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.lineTo(W-10,H-20); ctx.lineTo(40,H-20); ctx.closePath();
+  const gFill = ctx.createLinearGradient(0,0,0,H);
+  gFill.addColorStop(0,'rgba(136,51,204,.3)'); gFill.addColorStop(1,'rgba(136,51,204,.02)');
+  ctx.fillStyle = gFill; ctx.fill();
+
+  // X labels
+  ctx.fillStyle='#554477'; ctx.font='10px JetBrains Mono';
+  [1,5,10,15,20,25,30].forEach(l => {
+    const i=l-1, x=40+(i/29)*(W-50);
+    ctx.fillText(l, x-5, H-4);
+  });
+  ctx.fillStyle='#8877aa'; ctx.font='11px Crimson Text';
+  ctx.fillText('Level', W/2-15, H); ctx.fillText('EXP Required', 0, 14);
+}
+
+// ── Level simulator ───────────────────────────────────────────────────────────
+document.getElementById('lvl-slider')?.addEventListener('input', function() {
+  const l = parseInt(this.value);
+  document.getElementById('lvl-display').textContent = `LVL ${l}`;
+  // Simulate stat growth
+  let hp=120,mp=50,atk=10;
+  for(let i=2;i<=l;i++){
+    hp  += Math.floor(5 + 10*0.4 + 2);   // approx avg growth
+    mp  += Math.floor(2 + 10*0.25 + 1.5);
+    atk += Math.floor(0.3 + 10*0.05);
+  }
+  document.getElementById('sim-hp').textContent  = hp;
+  document.getElementById('sim-mp').textContent  = mp;
+  document.getElementById('sim-atk').textContent = atk;
+  document.getElementById('sim-exp').textContent = Math.floor(100*Math.pow(1.45,l-1));
+});
+
+// ── HUD Preview (inject inline HTML into iframe) ───────────────────────────────
+function loadHUD() {
+  const iframe = document.getElementById('hud-preview-frame');
+  if (iframe.src !== 'about:blank' && iframe.contentDocument?.body?.innerHTML) return;
+
+  const hudHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0012;color:#fff;font-family:serif;overflow:hidden;width:100%;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#vp{position:relative;width:960px;height:480px;background:linear-gradient(180deg,#050010 0%,#0d0025 40%,#150035 100%);border:2px solid #2a1a4a;overflow:hidden}
+.prlx{position:absolute;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(90deg,#0a0020 0px,#0a0020 80px,#080018 80px,#080018 160px);opacity:.3}
+.gnd{position:absolute;bottom:0;left:0;width:100%;height:50px;background:linear-gradient(180deg,#1a0a30 0%,#0d0020 100%);border-top:2px solid #330055}
+#player{position:absolute;left:180px;bottom:50px;width:28px;height:52px;background:linear-gradient(180deg,#cc8800 0%,#884400 30%,#880000 60%,#550000 100%);border-radius:4px 4px 0 0;animation:bob .8s ease-in-out infinite alternate}
+#player::before{content:"";position:absolute;top:2px;left:6px;width:14px;height:12px;background:#ffcc88;border-radius:50% 50% 40% 40%}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+#hud{position:absolute;top:0;left:0;right:0;padding:12px 16px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.br{display:flex;align-items:center;gap:6px}.bl{font-size:12px;width:22px;text-align:right;font-weight:bold}
+.bt{position:relative;height:13px;background:rgba(0,0,0,.6);border:1px solid #440055;border-radius:2px;overflow:hidden;flex:0 0 auto}
+.bf{height:100%;border-radius:2px;transition:width .15s}
+.hf{background:linear-gradient(90deg,#aa1111,#ee3333);box-shadow:0 0 6px #ff4444;width:220px}
+.mf{background:linear-gradient(90deg,#1133aa,#2255dd);box-shadow:0 0 6px #4488ff;width:160px}
+.ef{background:linear-gradient(90deg,#6611aa,#aa44ff);height:5px;width:240px}
+.bv{font-size:11px;color:#aaa;font-family:monospace}
+.lvb{background:linear-gradient(135deg,#220044,#440077);border:1px solid #8833cc;padding:2px 7px;font-size:11px;color:#cc88ff;border-radius:2px}
+#equip{position:absolute;top:12px;right:12px;display:flex;gap:6px}
+.eq{width:44px;height:44px;background:rgba(0,0,0,.6);border:1px solid #440055;display:flex;align-items:center;justify-content:center;font-size:20px;border-radius:4px;position:relative}
+.eq.act{border-color:#8833cc;box-shadow:0 0 8px #6622aa}
+.eq::after{content:attr(data-l);position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:8px;color:#666;white-space:nowrap}
+#mmap{position:absolute;bottom:12px;right:12px;width:140px;height:88px;background:rgba(0,0,0,.7);border:1px solid #330055}
+#mmap canvas{width:100%;height:100%}
+.mmlab{position:absolute;top:-15px;left:0;font-size:9px;color:#664488;letter-spacing:1px}
+#bbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);width:360px;display:flex;flex-direction:column;gap:3px;opacity:0;transition:opacity .5s}
+#bbar.show{opacity:1}
+.bbn{text-align:center;font-size:13px;color:#cc44ff;letter-spacing:2px}
+.bbt{width:100%;height:14px;background:rgba(0,0,0,.7);border:1px solid #660099}
+.bbf{height:100%;background:linear-gradient(90deg,#440099,#aa00ff);box-shadow:0 0 8px #9900ff;transition:width .3s;width:72%}
+#spells{position:absolute;bottom:12px;left:12px;display:flex;gap:5px}
+.sp{width:38px;height:38px;background:rgba(0,0,0,.6);border:1px solid #330055;display:flex;align-items:center;justify-content:center;font-size:16px;border-radius:3px;position:relative}
+.sp.on{border-color:#2255aa;box-shadow:0 0 6px #2244aa}
+.sp .mc{position:absolute;bottom:1px;right:2px;font-size:7px;color:#4488ff;font-family:monospace}
+.dmg{position:absolute;font-size:18px;font-weight:bold;pointer-events:none;animation:fu .8s forwards;font-family:serif;text-shadow:0 0 6px currentColor,0 2px 0 #000}
+@keyframes fu{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
+#notif{position:absolute;top:70px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none}
+.ni{font-size:15px;color:#ffdd00;letter-spacing:2px;animation:na 2.2s forwards}
+@keyframes na{0%{opacity:0;transform:translateY(-8px)}15%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}
+#ctrl{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.85);padding:6px;display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+.cb{background:#1a0033;border:1px solid #440066;color:#9966cc;padding:4px 10px;font-size:11px;cursor:pointer;border-radius:2px;font-family:serif}
+.cb:hover{background:#330055;color:#cc88ff}
+canvas#pc{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+</style></head><body>
+<div id="vp">
+<div class="prlx"></div>
+<canvas id="pc"></canvas>
+<div class="gnd"></div>
+<div id="player"></div>
+<div id="hud">
+  <div class="br"><span class="bl" style="color:#ee4444">HP</span><div class="bt" style="width:220px"><div class="bf hf" id="hf" style="width:78%"></div></div><span class="bv" id="hv">312 / 400</span></div>
+  <div class="br"><span class="bl" style="color:#4488ee">MP</span><div class="bt" style="width:180px"><div class="bf mf" id="mf" style="width:55%"></div></div><span class="bv" id="mv">55 / 100</span></div>
+  <div class="br" style="margin-top:1px"><span class="lvb" id="lvb">LVL 8</span><div class="bt" style="width:200px"><div class="bf ef" id="ef" style="width:40%;height:5px"></div></div><span class="bv" style="font-size:10px" id="ev">EXP 820/2050</span></div>
+</div>
+<div id="equip"><div class="eq act" data-l="R.HAND">⚔️</div><div class="eq" data-l="L.HAND">🛡️</div><div class="eq" data-l="CLOAK">🪄</div></div>
+<div id="spells"><div class="sp on">🔥<span class="mc">10</span></div><div class="sp">❄️<span class="mc">15</span></div><div class="sp">⚡<span class="mc">20</span></div><div class="sp">☠️<span class="mc">30</span></div></div>
+<div id="bbar"><div class="bbn" id="bbn">☠ DEATH — GRIM REAPER ☠</div><div class="bbt"><div class="bbf" id="bbf"></div></div></div>
+<div id="mmap"><span class="mmlab">MAP</span><canvas id="mc" width="140" height="88"></canvas></div>
+<div id="notif"></div>
+<div id="ctrl">
+  <button class="cb" onclick="d()">💥 Damage</button>
+  <button class="cb" onclick="h()">💚 Heal</button>
+  <button class="cb" onclick="xp()">⭐ EXP</button>
+  <button class="cb" onclick="lu()">🆙 Level Up</button>
+  <button class="cb" onclick="bs()">👹 Boss</button>
+  <button class="cb" onclick="be()">✅ Boss Kill</button>
+  <button class="cb" onclick="cr()">⚡ CRIT</button>
+  <button class="cb" onclick="it()">💎 Item</button>
+</div>
+</div>
+<script>
+const st={hp:312,mhp:400,mp:55,mmp:100,exp:820,eto:2050,lv:8,bhp:72};
+function ub(){
+  const hr=st.hp/st.mhp,mr=st.mp/st.mmp,er=st.exp/st.eto;
+  document.getElementById('hf').style.width=(hr*100)+'%';
+  document.getElementById('mf').style.width=(mr*100)+'%';
+  document.getElementById('ef').style.width=(er*100)+'%';
+  document.getElementById('hv').textContent=st.hp+' / '+st.mhp;
+  document.getElementById('mv').textContent=st.mp+' / '+st.mmp;
+  document.getElementById('ev').textContent='EXP '+st.exp+'/'+st.eto;
+  document.getElementById('lvb').textContent='LVL '+st.lv;
+  const hf=document.getElementById('hf');
+  hf.style.background=hr<.25?'linear-gradient(90deg,#880000,#cc0000)':hr<.5?'linear-gradient(90deg,#aa5500,#ee8800)':'linear-gradient(90deg,#aa1111,#ee3333)';
+  hf.style.boxShadow=hr<.25?'0 0 10px #ff0000':'0 0 6px #ff4444';
+}
+function dn(t,c){
+  const vp=document.getElementById('vp'),e=document.createElement('div');
+  e.className='dmg';e.textContent=t;e.style.color=c;
+  e.style.left=(160+Math.random()*80)+'px';e.style.top=(240+Math.random()*60)+'px';
+  e.style.position='absolute';e.style.zIndex=60;e.style.fontSize=c==='#ffdd00'?'26px':'18px';
+  vp.appendChild(e);setTimeout(()=>e.remove(),850);
+}
+function nf(m){
+  const n=document.getElementById('notif'),e=document.createElement('div');
+  e.className='ni';e.textContent=m;n.appendChild(e);setTimeout(()=>e.remove(),2300);
+}
+function flash(c){
+  const vp=document.getElementById('vp');
+  vp.style.boxShadow='inset 0 0 60px '+c;
+  setTimeout(()=>vp.style.boxShadow='',200);
+}
+function d(){const a=Math.floor(Math.random()*40+15);st.hp=Math.max(0,st.hp-a);ub();dn('-'+a,'#ff4444');flash('rgba(255,0,0,.35)');if(!st.hp)nf('☠ YOU DIED');}
+function h(){const a=Math.floor(Math.random()*60+20);st.hp=Math.min(st.mhp,st.hp+a);ub();dn('+'+a,'#44ff88');}
+function xp(){const a=Math.floor(Math.random()*200+50);st.exp+=a;nf('EXP +'+a);if(st.exp>=st.eto)lu();else ub();}
+function lu(){st.lv++;st.exp=0;st.eto=Math.floor(st.eto*1.4);st.mhp+=20;st.hp=st.mhp;st.mmp+=10;st.mp=st.mmp;ub();nf('✨ LEVEL UP! LVL '+st.lv);burst(480,200,40,'#ffdd00');}
+function bs(){document.getElementById('bbar').classList.add('show');nf('⚠ BOSS ENCOUNTERED');}
+function be(){
+  let h=parseInt(document.getElementById('bbf').style.width);
+  const t=setInterval(()=>{h-=4;document.getElementById('bbf').style.width=Math.max(0,h)+'%';if(h<=0){clearInterval(t);document.getElementById('bbar').classList.remove('show');nf('✅ BOSS DEFEATED!');}},50);
+}
+function cr(){dn('CRITICAL! '+Math.floor(Math.random()*120+60),'#ffdd00');nf('⚡ CRITICAL HIT!');}
+function it(){const it=['⚔️ Flame Sword!','🛡️ Dragon Mail!','💎 Bloodstone!','📜 Magic Tome!'];nf(it[Math.floor(Math.random()*it.length)]);}
+// Particles
+const pc=document.getElementById('pc'),px=pc.getContext('2d');
+const parts=[];
+function resize(){pc.width=pc.offsetWidth;pc.height=pc.offsetHeight;}
+resize();
+class P{constructor(x,y,o={}){this.x=x;this.y=y;this.vx=o.vx??(Math.random()-.5)*80;this.vy=o.vy??-(Math.random()*60+15);this.life=o.life??1;this.ml=this.life;this.r=o.r??Math.random()*2+1;this.c=o.c??'hsl('+(260+Math.random()*60)+',80%,60%)';this.g=o.g??60;}update(dt){this.vx+=0;this.vy+=this.g*dt;this.x+=this.vx*dt;this.y+=this.vy*dt;this.life-=dt;}draw(){px.save();px.globalAlpha=Math.max(0,this.life/this.ml);px.fillStyle=this.c;px.beginPath();px.arc(this.x,this.y,this.r,0,Math.PI*2);px.fill();px.restore();}}
+function burst(x,y,n,c){for(let i=0;i<n;i++){const a=(Math.PI*2/n)*i+Math.random()*.5,s=80+Math.random()*200;parts.push(new P(x,y,{vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5+Math.random()*.5,r:1+Math.random()*3,c,g:200}));}}
+setInterval(()=>{ for(let i=0;i<2;i++)parts.push(new P(Math.random()*960,430,{vy:-(Math.random()*20+5),vx:(Math.random()-.5)*15,life:3+Math.random()*2,r:.8,c:'hsla('+(270+Math.random()*40)+',70%,60%,.6)',g:-4})); },200);
+let lt=0;
+function loop(ts){const dt=Math.min((ts-lt)/1000,.05);lt=ts;px.clearRect(0,0,pc.width,pc.height);for(let i=parts.length-1;i>=0;i--){parts[i].update(dt);parts[i].draw();if(parts[i].life<=0)parts.splice(i,1);}requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+// Minimap
+const mc=document.getElementById('mc'),mx=mc.getContext('2d');
+const rooms=[{x:3,y:35,w:28,h:10},{x:31,y:26,w:18,h:10},{x:49,y:18,w:14,h:10},{x:31,y:38,w:22,h:8},{x:53,y:38,w:18,h:8},{x:71,y:26,w:22,h:20},{x:93,y:18,w:28,h:10},{x:103,y:28,w:18,h:18}];
+const conns=[[0,1],[1,2],[1,3],[2,4],[4,5],[5,6],[6,7],[3,4]];
+const vis=new Set([0,1,3]);let cur=1;
+function dm(){mx.clearRect(0,0,140,88);mx.fillStyle='rgba(0,0,0,.8)';mx.fillRect(0,0,140,88);conns.forEach(([a,b])=>{if(!vis.has(a)||!vis.has(b))return;const ra=rooms[a],rb=rooms[b];mx.strokeStyle='#2a1a4a';mx.lineWidth=1;mx.beginPath();mx.moveTo(ra.x+ra.w/2,ra.y+ra.h/2);mx.lineTo(rb.x+rb.w/2,rb.y+rb.h/2);mx.stroke();});rooms.forEach((r,i)=>{if(!vis.has(i))return;const ac=i===cur;mx.fillStyle=ac?'#330066':'#1a0033';mx.strokeStyle=ac?'#cc66ff':'#440066';mx.lineWidth=ac?1.5:1;mx.beginPath();mx.rect(r.x,r.y,r.w,r.h);mx.fill();mx.stroke();});const cr2=rooms[cur];mx.fillStyle='#fff';mx.beginPath();mx.arc(cr2.x+cr2.w/2,cr2.y+cr2.h/2,2.5,0,Math.PI*2);mx.fill();}
+dm();
+<\/script></body></html>`;
+
+  const blob = new Blob([hudHTML], {type:'text/html'});
+  iframe.src = URL.createObjectURL(blob);
+}
+
+// ── Init exp chart on load ─────────────────────────────────────────────────────
+setTimeout(drawExpChart, 100);
+</script>
+</body>
+</html>
