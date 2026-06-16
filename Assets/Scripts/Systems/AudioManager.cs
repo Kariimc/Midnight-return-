@@ -45,6 +45,12 @@ namespace MidnightReturn.Systems
             src.Play();
         }
 
+        // Positional SFX — spatialBlend is 0 (2D pool), position is accepted for API parity
+        public void PlaySFX(AudioClip clip, Vector3 _ , float volume = 1f) => Play(clip, volume);
+
+        // Public cross-fade entry point used by RoomManager
+        public void CrossFade(AudioClip clip, float duration = 1f) => PlayMusic(clip, duration);
+
         public void PlayMusic(AudioClip clip, float fadeIn = 1f)
         {
             if (clip == null || _musicSource == null) return;

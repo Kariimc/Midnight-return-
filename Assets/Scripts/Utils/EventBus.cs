@@ -45,6 +45,12 @@ namespace MidnightReturn.Utils
     public struct ScreenFlashEvent    { public UnityEngine.Color Color; public float Duration; }
     public struct CameraShakeEvent    { public float Intensity; public float Duration; }
 
+    // ── Inventory / equipment events ──────────────────────────────────
+    public struct EquipmentChangedEvent { public string SlotName; public string ItemId; }
+    public struct SpellEquippedEvent    { public string SpellId;  public int    Slot; }
+    public struct SpellCastEvent        { public string SpellId;  public int    Slot; public UnityEngine.Vector3 Origin; }
+    public struct ItemUsedEvent         { public string ItemId;   public int    Remaining; }
+
     // ── Map / room events ──────────────────────────────────────────────
     public struct RoomTransitionStartedEvent  { public string FromRoomId; public string ToRoomId; }
     public struct RoomTransitionCompleteEvent { public string RoomId; public string DisplayName; public MidnightReturn.Map.ZoneType Zone; }

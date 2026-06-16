@@ -28,6 +28,9 @@ namespace MidnightReturn.Core
         // Equipped item IDs
         public string RightHandId, LeftHandId, HelmetId, BodyId, CloakId, BootsId;
         public string Accessory1Id, Accessory2Id;
+
+        // Equipped spell IDs (4 slots)
+        public string[] SpellSlots = new string[4];
     }
 
     public class GameManager : MonoBehaviour

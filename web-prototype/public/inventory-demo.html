@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Midnight Return — Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none}
+body{background:#060409;color:#c8c0b0;font-family:'Cinzel',serif;overflow:hidden;height:100vh;width:100vw}
+
+/* ── Background scene ──────────────────────────────────────── */
+.scene{position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 60% at 50% 100%,#1a0a2e 0%,#060409 70%);
+  z-index:0}
+.scene::before{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 48px,rgba(255,255,255,.015) 49px),
+             repeating-linear-gradient(90deg,transparent,transparent 48px,rgba(255,255,255,.015) 49px)}
+
+/* ── Panel shell ────────────────────────────────────────────── */
+.panel{position:fixed;inset:0;z-index:10;
+  display:flex;flex-direction:column;
+  background:rgba(6,4,9,.96);
+  border:1px solid #3a2e14}
+.panel-body{flex:1;display:flex;min-height:0;padding:0 8px 8px}
+
+/* ── Top title bar ─────────────────────────────────────────── */
+.title-bar{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px 6px;
+  border-bottom:1px solid rgba(180,140,40,.3);
+  background:linear-gradient(90deg,rgba(80,50,10,.3),transparent,rgba(80,50,10,.3))}
+.title-bar h1{font-family:'Cinzel Decorative',serif;font-size:15px;color:#d4a030;letter-spacing:4px}
+.close-hint{font-size:10px;color:#5a5040;letter-spacing:2px}
+
+/* ── Column layout ──────────────────────────────────────────── */
+.col{display:flex;flex-direction:column;padding:14px 12px}
+.col-equip{width:260px;border-right:1px solid rgba(120,90,30,.25)}
+.col-inv{flex:1;border-right:1px solid rgba(120,90,30,.25)}
+.col-right{width:210px}
+
+.col-title{font-size:11px;letter-spacing:3px;color:#b89030;
+  padding-bottom:6px;margin-bottom:10px;
+  border-bottom:1px solid rgba(180,140,40,.25)}
+
+/* ── Equipment doll ─────────────────────────────────────────── */
+.doll{flex:1;position:relative;min-height:340px}
+.equip-slot{position:absolute;width:54px;height:54px;
+  border:1px solid #3a2a10;background:rgba(12,8,18,.8);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.equip-slot:hover{border-color:#b89030;box-shadow:0 0 8px rgba(200,150,30,.25)}
+.equip-slot.filled{border-color:#c8a030;box-shadow:0 0 6px rgba(200,160,40,.2)}
+.equip-slot .slot-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.equip-slot .slot-lbl{font-size:6px;letter-spacing:2px;color:#5a4820;margin-top:2px}
+.equip-slot.filled .slot-lbl{color:#9a7828}
+
+/* doll connector lines */
+.doll-line{position:absolute;background:rgba(80,60,20,.3);pointer-events:none}
+
+/* ── Item grid ──────────────────────────────────────────────── */
+.item-grid{display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;
+  flex:1;overflow-y:auto;padding-right:4px}
+.item-grid::-webkit-scrollbar{width:4px}
+.item-grid::-webkit-scrollbar-thumb{background:#3a2a10;border-radius:2px}
+.item-cell{width:52px;height:52px;
+  border:1px solid #2e2212;background:rgba(10,7,16,.8);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  cursor:pointer;position:relative;transition:border-color .12s,background .12s}
+.item-cell:hover{border-color:#8a7020;background:rgba(20,14,28,.9)}
+.item-cell:active{transform:scale(.95)}
+.item-cell .cell-icon{font-size:24px}
+.item-cell .cell-qty{position:absolute;bottom:2px;right:4px;font-size:8px;color:#c8a030}
+.item-cell .cell-name{font-size:6px;color:#6a5830;letter-spacing:1px;margin-top:1px}
+
+/* ── Stats panel ─────────────────────────────────────────────── */
+.stat-row{display:flex;justify-content:space-between;margin-bottom:3px;align-items:center}
+.stat-key{font-size:10px;color:#6a5c40;letter-spacing:1px}
+.stat-val{font-size:10px;color:#d0c8b8}
+.stat-val.pos{color:#40c870}
+.stat-val.neg{color:#c84040}
+
+/* ── Spell slots ─────────────────────────────────────────────── */
+.spell-row{display:flex;align-items:center;gap:8px;
+  background:rgba(10,7,20,.7);border:1px solid #2a1e40;
+  padding:5px 8px;margin-bottom:4px;cursor:pointer;
+  transition:border-color .12s}
+.spell-row:hover{border-color:#6040a0}
+.spell-row.active-slot{border-color:#8060c8;box-shadow:0 0 8px rgba(120,80,200,.25)}
+.spell-num{font-size:9px;color:#6040a0;width:14px}
+.spell-name{font-size:10px;color:#d0c8b8;flex:1}
+.spell-mp{font-size:9px;color:#4060c0}
+.spell-cd{height:2px;background:#1a1428;margin:0 -8px;position:relative}
+.spell-cd-fill{height:100%;background:#6040a0;transition:width .1s linear}
+
+/* ── Tooltip ─────────────────────────────────────────────────── */
+.tooltip{position:fixed;z-index:100;
+  background:rgba(10,7,18,.97);border:1px solid #5a4220;
+  padding:10px 12px;width:180px;pointer-events:none;
+  display:none}
+.tooltip.show{display:block}
+.tt-name{font-size:12px;color:#d4a030;font-weight:700;margin-bottom:4px}
+.tt-type{font-size:9px;color:#7a6040;letter-spacing:2px;margin-bottom:6px}
+.tt-desc{font-size:10px;color:#9a9080;line-height:1.5}
+.tt-stats{margin-top:8px;font-size:10px}
+.tt-stat{display:flex;justify-content:space-between}
+.tt-stat span{color:#60a870}
+
+/* ── Divider ─────────────────────────────────────────────────── */
+hr.section{border:none;border-top:1px solid rgba(120,90,30,.2);margin:10px 0}
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes goldPulse{0%,100%{opacity:.6}50%{opacity:1}}
+.equip-slot.filled .slot-icon{animation:goldPulse 2.5s infinite}
+</style>
+</head>
+<body>
+<div class="scene"></div>
+
+<div class="panel">
+  <!-- Title bar -->
+  <div class="title-bar">
+    <h1>INVENTORY</h1>
+    <span class="close-hint">[TAB] CLOSE</span>
+  </div>
+
+  <div class="panel-body">
+    <!-- ── Equipment Doll ── -->
+    <div class="col col-equip">
+      <div class="col-title">EQUIPMENT</div>
+      <div class="doll" id="doll"></div>
+    </div>
+
+    <!-- ── Item Grid ── -->
+    <div class="col col-inv">
+      <div class="col-title">ITEMS <span id="item-count" style="color:#5a4820;font-size:9px;margin-left:8px;letter-spacing:2px"></span></div>
+      <div class="item-grid" id="item-grid"></div>
+    </div>
+
+    <!-- ── Stats + Spells ── -->
+    <div class="col col-right">
+      <div class="col-title">STATS</div>
+      <div id="stat-rows"></div>
+      <hr class="section">
+      <div class="col-title">SPELLS</div>
+      <div id="spell-slots"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-type" id="tt-type"></div>
+  <div class="tt-desc" id="tt-desc"></div>
+  <div class="tt-stats" id="tt-stats"></div>
+</div>
+
+<script>
+// ── Data ────────────────────────────────────────────────────────────────────
+const EQUIP_SLOTS = [
+  {id:'Helmet',    lbl:'HEAD',   x:36, y:2},
+  {id:'Body',      lbl:'BODY',   x:36, y:28},
+  {id:'RightHand', lbl:'R.HAND', x:2,  y:28},
+  {id:'LeftHand',  lbl:'L.HAND', x:70, y:28},
+  {id:'Cloak',     lbl:'CLOAK',  x:36, y:55},
+  {id:'Boots',     lbl:'FEET',   x:36, y:76},
+  {id:'Accessory1',lbl:'ACC 1',  x:2,  y:70},
+  {id:'Accessory2',lbl:'ACC 2',  x:70, y:70},
+];
+
+const WEAPONS = {
+  'short_sword':    {name:'Short Sword',   type:'SWORD',  icon:'⚔',  atk:18, elem:'PHYS', desc:'A well-balanced steel short sword. Swift combos.', rarity:'common'},
+  'vampire_killer': {name:'Vampire Killer',type:'WHIP',   icon:'🩸', atk:24, elem:'HOLY', desc:'The legendary whip blessed by the church. Deals holy damage.', rarity:'legendary'},
+  'claymore':       {name:'Claymore',      type:'SWORD',  icon:'🗡', atk:32, elem:'PHYS', desc:'A massive two-handed sword. Slow but devastating.', rarity:'rare'},
+  'shadow_blade':   {name:'Shadow Blade',  type:'SWORD',  icon:'🌑', atk:22, elem:'DARK', desc:'A blade forged in shadow. Steals a fraction of damage dealt.', rarity:'uncommon'},
+  'holy_lance':     {name:'Holy Lance',    type:'SPEAR',  icon:'✝', atk:28, elem:'HOLY', desc:'A sacred spear that pierces unholy armor.', rarity:'rare'},
+};
+
+const ARMORS = {
+  'iron_helm':   {name:'Iron Helm',     slot:'Helmet', icon:'⛑', def:8,  desc:'Basic iron protection.', rarity:'common'},
+  'castle_plate':{name:'Castle Plate',  slot:'Body',   icon:'🛡', def:16, desc:'Heavy plate worn by the castle guard.', rarity:'uncommon'},
+  'shadow_cloak':{name:'Shadow Cloak',  slot:'Cloak',  icon:'🌘', def:4, mpmod:15, desc:'A cloak woven from shadow essence. Boosts max MP.', rarity:'rare'},
+  'mist_boots':  {name:'Mist Boots',    slot:'Boots',  icon:'💨', def:5,  desc:'Boots that let you step through mist silently.', rarity:'uncommon'},
+  'moon_ring':   {name:'Moon Ring',     slot:'Accessory',icon:'💍',def:0, lck:8, desc:'An ancient ring inscribed with moon runes. +8 LCK.', rarity:'rare'},
+};
+
+const ITEMS = [
+  {id:'health_potion',   name:'Health Potion',   qty:5, icon:'🧪', color:'#c83030', type:'CONSUMABLE', desc:'Restores 80 HP.', hp:80},
+  {id:'mana_potion',     name:'Mana Potion',     qty:3, icon:'💧', color:'#3060c8', type:'CONSUMABLE', desc:'Restores 40 MP.', mp:40},
+  {id:'antidote',        name:'Antidote',         qty:2, icon:'🌿', color:'#30c860', type:'CONSUMABLE', desc:'Cures poison status.'},
+  {id:'soul_essence',    name:'Soul Essence',     qty:8, icon:'✨', color:'#c8c030', type:'MATERIAL',   desc:'Condensed soul energy. Used in crafting.'},
+  {id:'moonstone',       name:'Moonstone',        qty:1, icon:'🌙', color:'#8090c8', type:'MATERIAL',   desc:'A rare gem pulsing with lunar energy.'},
+  {id:'crypt_key',       name:'Crypt Key',        qty:1, icon:'🗝', color:'#b0a060', type:'KEY ITEM',   desc:'Opens the sealed door in the Catacombs.'},
+  {id:'bat_wing',        name:'Bat Wing',         qty:6, icon:'🦇', color:'#5a4060', type:'MATERIAL',   desc:'Dropped by cave bats. Alchemical ingredient.'},
+  {id:'elixir',          name:'Elixir',           qty:1, icon:'⚗', color:'#c030c8', type:'CONSUMABLE', desc:'Restores all HP and MP. Extremely rare.', hp:999, mp:999},
+  {id:'silver_bullet',   name:'Silver Bullet',    qty:12,icon:'💠', color:'#b0c0d0', type:'MATERIAL',   desc:'Effective against lycanthropes.'},
+  {id:'dark_crystal',    name:'Dark Crystal',     qty:2, icon:'🔮', color:'#6030c8', type:'MATERIAL',   desc:'Fragment of a shattered dark relic.'},
+  {id:'holy_water',      name:'Holy Water',       qty:3, icon:'💦', color:'#c0e0ff', type:'CONSUMABLE', desc:'Deals holy damage to undead in a small area.'},
+  {id:'castle_map',      name:'Castle Map (SE)',  qty:1, icon:'📜', color:'#b09060', type:'KEY ITEM',   desc:'Reveals the Southeast wing of the castle.'},
+];
+
+const SPELLS = [
+  {id:'dark_fireball', name:'Dark Fireball', mp:15, elem:'DARK', desc:'A sphere of dark fire that ignites on impact.'},
+  {id:'bat_swarm',     name:'Bat Swarm',     mp:20, elem:'DARK', desc:'Summons a swarm of bats that chase enemies.'},
+  {id:'soul_steal',    name:'Soul Steal',    mp:12, elem:'DARK', desc:'Drain life from a nearby enemy.'},
+  {id:'',              name:'—',             mp:0,  elem:'',     desc:''},
+];
+
+const BASE_STATS = {LV:7, STR:24, CON:18, INT:20, LCK:12, HP:340, MaxHP:420, MP:85, MaxMP:120, ATK:36, DEF:22};
+
+const equipped = {
+  RightHand: 'short_sword',
+  LeftHand:  '',
+  Helmet:    'iron_helm',
+  Body:      'castle_plate',
+  Cloak:     'shadow_cloak',
+  Boots:     '',
+  Accessory1:'moon_ring',
+  Accessory2:'',
+};
+
+const inventory = JSON.parse(JSON.stringify(ITEMS)); // mutable copy
+let activeSpellSlot = 0;
+
+// ── Build equipment doll ─────────────────────────────────────────────────────
+function buildDoll(){
+  const doll = document.getElementById('doll');
+  doll.innerHTML = '';
+
+  // Draw body outline guide lines (subtle)
+  const lines = [
+    {l:48,t:'24%',w:2,h:'28%'},  // body center vertical
+    {l:0,t:'40%',w:'100%',h:2},  // horizontal torso
+  ];
+
+  EQUIP_SLOTS.forEach(s=>{
+    const el = document.createElement('div');
+    el.className = 'equip-slot'+(equipped[s.id]?' filled':'');
+    el.style.left = s.x+'%';
+    el.style.top  = s.y+'%';
+    el.dataset.slot = s.id;
+
+    const item = equipped[s.id] ? (WEAPONS[equipped[s.id]] || ARMORS[equipped[s.id]]) : null;
+
+    el.innerHTML = `
+      <div class="slot-icon">${item ? item.icon : '·'}</div>
+      <div class="slot-lbl">${s.lbl}</div>`;
+
+    el.addEventListener('mouseenter', e=>{
+      if(item) showTooltip(e, item.name, item.type||item.slot, item.desc, item);
+    });
+    el.addEventListener('mouseleave', hideTooltip);
+    el.addEventListener('click', ()=>{
+      equipped[s.id] = '';
+      buildDoll(); updateStats();
+    });
+    doll.appendChild(el);
+  });
+}
+
+// ── Build item grid ──────────────────────────────────────────────────────────
+function buildGrid(){
+  const grid = document.getElementById('item-grid');
+  grid.innerHTML = '';
+  const active = inventory.filter(i=>i.qty>0);
+  document.getElementById('item-count').textContent = active.length+' / 40';
+
+  active.forEach(item=>{
+    const el = document.createElement('div');
+    el.className = 'item-cell';
+    el.innerHTML = `
+      <div class="cell-icon">${item.icon}</div>
+      <div class="cell-qty">×${item.qty}</div>`;
+    el.style.borderColor = item.color+'44';
+
+    el.addEventListener('mouseenter', e=>showTooltip(e,item.name,item.type,item.desc,item));
+    el.addEventListener('mouseleave', hideTooltip);
+    el.addEventListener('click', ()=>useItem(item, el));
+    grid.appendChild(el);
+  });
+}
+
+function useItem(item, el){
+  if(item.qty<=0) return;
+  if(item.type==='CONSUMABLE' && (item.hp||item.mp)){
+    flashConsume(el);
+    item.qty--;
+    buildGrid();
+  }
+}
+
+function flashConsume(el){
+  el.style.boxShadow='0 0 12px #60ff60aa';
+  setTimeout(()=>el.style.boxShadow='',300);
+}
+
+// ── Stats ────────────────────────────────────────────────────────────────────
+function computeStats(){
+  const s = {...BASE_STATS};
+  // Apply equipped armor bonuses
+  Object.entries(equipped).forEach(([slot, id])=>{
+    const a = ARMORS[id];
+    if(!a) return;
+    s.DEF += (a.def||0);
+    s.LCK += (a.lck||0);
+    s.MaxMP += (a.mpmod||0);
+  });
+  const rh = WEAPONS[equipped.RightHand];
+  if(rh) s.ATK += rh.atk;
+  return s;
+}
+
+function updateStats(){
+  const s = computeStats();
+  const rows = document.getElementById('stat-rows');
+  rows.innerHTML = `
+    ${row('LV',   s.LV)}
+    ${row('STR',  s.STR)}
+    ${row('CON',  s.CON)}
+    ${row('INT',  s.INT)}
+    ${row('LCK',  s.LCK)}
+    ${row('HP',   s.HP+' / '+s.MaxHP, '#c84040')}
+    ${row('MP',   s.MP+' / '+s.MaxMP, '#4060c8')}
+    ${row('ATK',  s.ATK, '#c8a030')}
+    ${row('DEF',  s.DEF)}
+    ${row('FIRE', '+0')}
+    ${row('ICE',  '+0')}
+    ${row('LTN',  '+10', '#60c8a0')}
+    ${row('DARK', '-15', '#c84040')}
+    ${row('HOLY', '+20', '#60c8a0')}
+  `;
+}
+
+function row(k, v, col='#d0c8b8'){
+  return `<div class="stat-row"><span class="stat-key">${k}</span><span class="stat-val" style="color:${col}">${v}</span></div>`;
+}
+
+// ── Spell slots ───────────────────────────────────────────────────────────────
+function buildSpellSlots(){
+  const el = document.getElementById('spell-slots');
+  el.innerHTML='';
+  SPELLS.forEach((sp,i)=>{
+    const div = document.createElement('div');
+    div.className = 'spell-row'+(i===activeSpellSlot?' active-slot':'');
+    div.innerHTML = `
+      <span class="spell-num">${i+1}</span>
+      <span class="spell-name">${sp.name}</span>
+      <span class="spell-mp">${sp.mp>0?sp.mp+' MP':''}</span>`;
+    div.addEventListener('click',()=>{ activeSpellSlot=i; buildSpellSlots(); });
+    if(sp.name!=='—'){
+      div.addEventListener('mouseenter', e=>showTooltip(e,sp.name,sp.elem+' SPELL',sp.desc,null));
+      div.addEventListener('mouseleave', hideTooltip);
+    }
+    el.appendChild(div);
+  });
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+function showTooltip(e, name, type, desc, item){
+  const tt = document.getElementById('tooltip');
+  document.getElementById('tt-name').textContent  = name;
+  document.getElementById('tt-type').textContent  = type||'';
+  document.getElementById('tt-desc').textContent  = desc||'';
+  const statsEl = document.getElementById('tt-stats');
+  statsEl.innerHTML='';
+  if(item){
+    if(item.atk)    statsEl.innerHTML+=`<div class="tt-stat"><span>ATK</span><span>+${item.atk}</span></div>`;
+    if(item.def)    statsEl.innerHTML+=`<div class="tt-stat"><span>DEF</span><span>+${item.def}</span></div>`;
+    if(item.lck)    statsEl.innerHTML+=`<div class="tt-stat"><span>LCK</span><span>+${item.lck}</span></div>`;
+    if(item.hp)     statsEl.innerHTML+=`<div class="tt-stat"><span>HP</span><span style="color:#60a870">+${item.hp}</span></div>`;
+    if(item.mp||item.mpmod) statsEl.innerHTML+=`<div class="tt-stat"><span>MP</span><span style="color:#6080c8">+${item.mp||item.mpmod}</span></div>`;
+    if(item.rarity) statsEl.innerHTML+=`<div style="margin-top:6px;font-size:9px;letter-spacing:2px;color:${rarityColor(item.rarity)}">${item.rarity.toUpperCase()}</div>`;
+  }
+  tt.classList.add('show');
+
+  const x = Math.min(e.clientX+14, window.innerWidth-200);
+  const y = Math.min(e.clientY-10, window.innerHeight-160);
+  tt.style.left = x+'px';
+  tt.style.top  = y+'px';
+}
+
+function hideTooltip(){ document.getElementById('tooltip').classList.remove('show'); }
+
+function rarityColor(r){
+  return {common:'#8a8878',uncommon:'#40a060',rare:'#4070c8',legendary:'#c8a030'}[r]||'#888';
+}
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'||e.key.toLowerCase()==='i') location.reload();
+  if(e.key>='1'&&e.key<='4'){ activeSpellSlot=parseInt(e.key)-1; buildSpellSlots(); }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildDoll();
+buildGrid();
+updateStats();
+buildSpellSlots();
+</script>
+</body>
+</html>

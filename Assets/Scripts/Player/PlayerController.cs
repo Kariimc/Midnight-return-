@@ -129,6 +129,11 @@ namespace MidnightReturn.Player
             VFXManager.Instance?.SpawnHealBurst(transform.position);
         }
 
+        public void RestoreMp(int amount)
+        {
+            Stats.Mp = Mathf.Min(Stats.MaxMp, Stats.Mp + amount);
+        }
+
         public void RestoreAtStatue()
         {
             Stats.Hp = Stats.MaxHp;

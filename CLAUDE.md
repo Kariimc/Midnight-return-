@@ -121,6 +121,16 @@ Level-up: random stat growth with variance, full HP/MP restore
   - PlayerInputHandler.cs — ConsumeInteract() buffered interact input
   - EventBus.cs — RoomTransition{Started,Complete,Blocked}Event, SaveStatueActivatedEvent
   - GameManager.cs — SaveData: LastSaveStatueId, LastSavePosition, UnlockedDoors
-- [ ] Phase 5: Inventory UI, equipment screen, spell system
+- [x] Phase 5: Inventory UI, equipment screen, spell system
+  - SpellDataSO.cs — SpellType/SpellElement enums, MP cost, cooldown, damage, cast/impact VFX, projectile prefab
+  - ItemDataSO.cs — ItemCategory enum, HP/MP restore, permanent stat mods, stack size
+  - InventorySystem.cs — singleton catalog, equip/unequip for all slot types, stat recalculation, UseItem()
+  - PlayerSpellSystem.cs — 4 spell slots, TryCast() with MP check + cooldown, Projectile/AreaBurst/Buff/Drain effects
+  - InventoryUI.cs — runtime UI Toolkit panel: equipment doll (8 slots) + item grid + stats + spell slots, Tab toggle
+  - AudioManager.cs — public CrossFade() and PlaySFX() wrappers added (Phase 4 bug fixes)
+  - EventBus.cs — EquipmentChangedEvent, SpellEquippedEvent, SpellCastEvent, ItemUsedEvent
+  - GameManager.cs — SaveData.SpellSlots[4] added
+  - PlayerController.cs — RestoreMp() added
+  - web-prototype/public/inventory-demo.html — interactive gothic inventory demo
 - [ ] Phase 6: Full audio pipeline, music zones, dynamic mix
 - [ ] Phase 7: Level art pipeline — tile system, parallax, HDRP lighting per zone
