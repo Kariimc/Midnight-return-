@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Midnight Return — HUD Mockup</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0012;color:#fff;font-family:"Palatino Linotype",Palatino,serif;overflow:hidden;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+/* ── Game viewport ── */
+#viewport{position:relative;width:960px;height:540px;background:linear-gradient(180deg,#050010 0%,#0d0025 40%,#150035 100%);border:2px solid #330066;overflow:hidden}
+
+/* ── Parallax layers ── */
+.parallax-bg{position:absolute;top:0;left:0;width:100%;height:100%}
+.p1{background:repeating-linear-gradient(90deg,#0a0020 0px,#0a0020 80px,#080018 80px,#080018 160px);opacity:.4}
+.p2{background:linear-gradient(90deg,transparent 70%,#110033 100%);opacity:.3}
+
+/* Castle silhouette */
+.castle{position:absolute;bottom:0;left:0;width:100%;height:220px;background:
+  /* Towers */
+  radial-gradient(ellipse 12px 80px at 60px 0, #110022 100%,transparent 100%),
+  radial-gradient(ellipse 12px 60px at 200px 20px, #110022 100%,transparent 100%),
+  radial-gradient(ellipse 8px 100px at 380px 0, #110022 100%,transparent 100%),
+  radial-gradient(ellipse 12px 70px at 580px 10px, #110022 100%,transparent 100%),
+  radial-gradient(ellipse 10px 90px at 780px 0, #110022 100%,transparent 100%),
+  radial-gradient(ellipse 14px 110px at 920px 0, #110022 100%,transparent 100%),
+  linear-gradient(180deg,transparent 30%,#110022 100%);
+opacity:.7}
+
+/* Ground platform */
+.ground{position:absolute;bottom:0;left:0;width:100%;height:60px;background:linear-gradient(180deg,#1a0a30 0%,#0d0020 100%);border-top:2px solid #330055}
+
+/* ── HUD ── */
+#hud{position:absolute;top:0;left:0;right:0;padding:14px 18px;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+
+.bar-row{display:flex;align-items:center;gap:8px}
+.bar-label{font-size:12px;width:22px;text-align:right;font-weight:bold}
+.bar-track{position:relative;height:14px;background:rgba(0,0,0,.6);border:1px solid #440055;border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .15s ease}
+.hp-fill{background:linear-gradient(90deg,#aa1111,#ee3333);box-shadow:0 0 6px #ff4444}
+.mp-fill{background:linear-gradient(90deg,#1133aa,#2255dd);box-shadow:0 0 6px #4488ff}
+.exp-fill{background:linear-gradient(90deg,#6611aa,#aa44ff);box-shadow:0 0 4px #cc66ff}
+.bar-val{font-size:11px;color:#aaa;min-width:70px;font-family:monospace}
+.hp-track{width:220px}
+.mp-track{width:180px}
+.exp-track{width:240px;height:6px}
+.exp-row{display:flex;align-items:center;gap:8px;margin-top:-2px}
+.lvl-badge{background:linear-gradient(135deg,#220044,#440077);border:1px solid #8833cc;padding:2px 7px;font-size:12px;color:#cc88ff;border-radius:2px;letter-spacing:1px}
+
+/* ── Equipped weapon icon ── */
+#equip{position:absolute;top:14px;right:14px;display:flex;gap:8px}
+.equip-slot{width:48px;height:48px;background:rgba(0,0,0,.6);border:1px solid #440055;display:flex;align-items:center;justify-content:center;font-size:22px;border-radius:4px;position:relative}
+.equip-slot::after{content:attr(data-label);position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:#666;white-space:nowrap}
+.equip-slot.active{border-color:#8833cc;box-shadow:0 0 8px #6622aa}
+
+/* ── Mini-map ── */
+#minimap{position:absolute;bottom:14px;right:14px;width:160px;height:100px;background:rgba(0,0,0,.7);border:1px solid #330055}
+#minimap canvas{width:100%;height:100%}
+.minimap-label{position:absolute;top:-18px;left:0;font-size:10px;color:#664488;letter-spacing:1px}
+
+/* ── Boss bar ── */
+#boss-bar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:400px;display:flex;flex-direction:column;gap:4px;opacity:0;transition:opacity .5s}
+#boss-bar.active{opacity:1}
+.boss-name{text-align:center;font-size:14px;color:#cc44ff;letter-spacing:2px;text-shadow:0 0 10px #8800ff}
+.boss-track{width:100%;height:16px;background:rgba(0,0,0,.7);border:1px solid #660099}
+.boss-fill{height:100%;background:linear-gradient(90deg,#440099,#aa00ff);box-shadow:0 0 8px #9900ff;transition:width .3s ease}
+
+/* ── Active spell slot ── */
+#spell-slots{position:absolute;bottom:14px;left:14px;display:flex;gap:6px}
+.spell-slot{width:40px;height:40px;background:rgba(0,0,0,.6);border:1px solid #330055;display:flex;align-items:center;justify-content:center;font-size:18px;border-radius:3px;position:relative}
+.spell-slot .mp-cost{position:absolute;bottom:1px;right:3px;font-size:8px;color:#4488ff;font-family:monospace}
+.spell-slot.equipped{border-color:#2255aa;box-shadow:0 0 6px #2244aa}
+
+/* ── Floating damage numbers ── */
+.dmg-num{position:absolute;font-size:20px;font-weight:bold;text-shadow:0 0 6px currentColor,0 2px 0 #000;pointer-events:none;animation:floatUp .8s forwards}
+.dmg-num.crit{font-size:30px;color:#ffdd00}
+.dmg-num.normal{color:#ffffff}
+.dmg-num.heal{color:#44ff88;font-size:18px}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
+
+/* ── Notifications ── */
+#notif{position:absolute;top:80px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none}
+.notif-item{font-size:16px;color:#ffdd00;text-shadow:0 0 10px #ff8800;letter-spacing:2px;animation:notifAnim 2s forwards;margin-bottom:4px}
+@keyframes notifAnim{0%{opacity:0;transform:translateY(-10px)}15%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
+
+/* ── Player mock sprite ── */
+#player-mock{position:absolute;left:200px;bottom:60px;width:32px;height:56px;background:linear-gradient(180deg,#cc8800 0%,#884400 30%,#880000 60%,#550000 100%);border-radius:4px 4px 0 0;animation:idleBob .8s ease-in-out infinite alternate}
+#player-mock::before{content:"";position:absolute;top:2px;left:8px;width:16px;height:14px;background:#ffcc88;border-radius:50% 50% 40% 40%}
+@keyframes idleBob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+
+/* ── Interactive controls ── */
+#controls{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.8);padding:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.ctrl-btn{background:#1a0033;border:1px solid #440066;color:#9966cc;padding:5px 12px;font-size:11px;font-family:inherit;cursor:pointer;border-radius:2px;transition:all .15s}
+.ctrl-btn:hover{background:#330055;color:#cc88ff;border-color:#8833cc}
+.ctrl-btn:active{transform:scale(.96)}
+
+/* ── Status effects ── */
+#status-effects{position:absolute;top:90px;left:14px;display:flex;gap:4px}
+.status-icon{width:28px;height:28px;border:1px solid #440055;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:14px;border-radius:3px;position:relative}
+.status-icon .timer{position:absolute;bottom:0;left:0;right:0;height:3px;background:#ff4444}
+
+/* Particles canvas */
+#particles-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="viewport">
+  <!-- BG layers -->
+  <div class="parallax-bg p1"></div>
+  <div class="parallax-bg p2"></div>
+  <div class="castle"></div>
+
+  <!-- Particle layer -->
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- Ground -->
+  <div class="ground"></div>
+
+  <!-- Player mock -->
+  <div id="player-mock"></div>
+
+  <!-- ── HUD ── -->
+  <div id="hud">
+    <div class="bar-row">
+      <span class="bar-label" style="color:#ee4444">HP</span>
+      <div class="bar-track hp-track"><div class="bar-fill hp-fill" id="hp-fill" style="width:78%"></div></div>
+      <span class="bar-val" id="hp-val">312 / 400</span>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label" style="color:#4488ee">MP</span>
+      <div class="bar-track mp-track"><div class="bar-fill mp-fill" id="mp-fill" style="width:55%"></div></div>
+      <span class="bar-val" id="mp-val">55 / 100</span>
+    </div>
+    <div class="exp-row">
+      <span class="lvl-badge" id="lvl-badge">LVL 8</span>
+      <div class="bar-track exp-track"><div class="bar-fill exp-fill" id="exp-fill" style="width:40%"></div></div>
+      <span class="bar-val" style="font-size:10px;color:#8855bb" id="exp-val">EXP 820/2050</span>
+    </div>
+  </div>
+
+  <!-- Status effects -->
+  <div id="status-effects">
+    <div class="status-icon" title="Poison">🟢<div class="timer" style="width:60%"></div></div>
+    <div class="status-icon" title="Slow">🔵<div class="timer" style="width:30%;background:#4488ff"></div></div>
+  </div>
+
+  <!-- Equipped -->
+  <div id="equip">
+    <div class="equip-slot active" data-label="R.HAND">⚔️</div>
+    <div class="equip-slot" data-label="L.HAND">🛡️</div>
+    <div class="equip-slot" data-label="CLOAK">🪄</div>
+  </div>
+
+  <!-- Spell slots -->
+  <div id="spell-slots">
+    <div class="spell-slot equipped">🔥<span class="mp-cost">10</span></div>
+    <div class="spell-slot">❄️<span class="mp-cost">15</span></div>
+    <div class="spell-slot">⚡<span class="mp-cost">20</span></div>
+    <div class="spell-slot">☠️<span class="mp-cost">30</span></div>
+  </div>
+
+  <!-- Boss bar (hidden by default) -->
+  <div id="boss-bar">
+    <div class="boss-name" id="boss-name">☠ DEATH — GRIM REAPER ☠</div>
+    <div class="boss-track"><div class="boss-fill" id="boss-fill" style="width:72%"></div></div>
+  </div>
+
+  <!-- Mini-map -->
+  <div id="minimap">
+    <span class="minimap-label">MAP</span>
+    <canvas id="map-canvas" width="160" height="100"></canvas>
+  </div>
+
+  <!-- Notifications -->
+  <div id="notif"></div>
+
+  <!-- Controls -->
+  <div id="controls">
+    <button class="ctrl-btn" onclick="simDamage()">💥 Take Damage</button>
+    <button class="ctrl-btn" onclick="simHeal()">💚 Heal</button>
+    <button class="ctrl-btn" onclick="simExpGain()">⭐ Gain EXP</button>
+    <button class="ctrl-btn" onclick="simLevelUp()">🆙 Level Up</button>
+    <button class="ctrl-btn" onclick="simBossStart()">👹 Boss Fight</button>
+    <button class="ctrl-btn" onclick="simBossEnd()">✅ Boss Defeated</button>
+    <button class="ctrl-btn" onclick="simCrit()">⚡ Crit Hit</button>
+    <button class="ctrl-btn" onclick="simItemDrop()">💎 Item Drop</button>
+    <button class="ctrl-btn" onclick="simStatus()">☠️ Curse</button>
+  </div>
+</div>
+
+<script>
+// ─── Game State ──────────────────────────────────────────────────────────────
+const state = {
+  hp: 312, maxHp: 400,
+  mp: 55,  maxMp: 100,
+  exp: 820, expToNext: 2050,
+  level: 8,
+  bossHp: 72,
+};
+
+// ─── Particle System ─────────────────────────────────────────────────────────
+const canvas = document.getElementById('particles-canvas');
+const ctx    = canvas.getContext('2d');
+const particles = [];
+
+function resizeCanvas() {
+  canvas.width  = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+resizeCanvas();
+
+class Particle {
+  constructor(x, y, opts = {}) {
+    this.x  = x; this.y = y;
+    this.vx = (opts.vx ?? (Math.random()-0.5)*120);
+    this.vy = (opts.vy ?? -(Math.random()*80+20));
+    this.life = opts.life ?? 1;
+    this.maxLife = this.life;
+    this.r  = opts.r ?? Math.random()*3+1;
+    this.color = opts.color ?? `hsl(${Math.floor(Math.random()*60+260)},80%,60%)`;
+    this.gravity = opts.gravity ?? 60;
+  }
+  update(dt) {
+    this.vy += this.gravity * dt;
+    this.x  += this.vx * dt;
+    this.y  += this.vy * dt;
+    this.life -= dt;
+  }
+  draw(ctx) {
+    const alpha = Math.max(0, this.life / this.maxLife);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle   = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// Ambient particles
+function spawnAmbient() {
+  for (let i = 0; i < 3; i++) {
+    particles.push(new Particle(
+      Math.random() * canvas.width,
+      canvas.height - 70,
+      { vy: -(Math.random()*30+10), vx:(Math.random()-0.5)*20, life:3+Math.random()*2, r:1, gravity:-5, color:`hsla(${270+Math.random()*40},70%,60%,.6)` }
+    ));
+  }
+}
+setInterval(spawnAmbient, 200);
+
+let last = 0;
+function animLoop(ts) {
+  const dt = Math.min((ts - last)/1000, 0.05);
+  last = ts;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for (let i = particles.length-1; i >= 0; i--) {
+    particles[i].update(dt);
+    particles[i].draw(ctx);
+    if (particles[i].life <= 0) particles.splice(i,1);
+  }
+  requestAnimationFrame(animLoop);
+}
+requestAnimationFrame(animLoop);
+
+// ─── Burst helper ─────────────────────────────────────────────────────────────
+function burst(x, y, count=20, opts={}) {
+  for (let i=0; i<count; i++) {
+    const angle = (Math.PI*2/count)*i + Math.random()*0.5;
+    const speed = opts.speed ?? (80+Math.random()*200);
+    particles.push(new Particle(x, y, {
+      vx: Math.cos(angle)*speed,
+      vy: Math.sin(angle)*speed,
+      life: opts.life ?? (0.4+Math.random()*0.5),
+      r:   opts.r ?? (1+Math.random()*2),
+      color: opts.color ?? `hsl(${30+Math.random()*30},100%,60%)`,
+      gravity: opts.gravity ?? 200,
+    }));
+  }
+}
+
+// ─── UI Helpers ───────────────────────────────────────────────────────────────
+function updateBars() {
+  const hpP = (state.hp / state.maxHp * 100).toFixed(1);
+  const mpP = (state.mp / state.maxMp * 100).toFixed(1);
+  const expP= (state.exp / state.expToNext * 100).toFixed(1);
+
+  document.getElementById('hp-fill').style.width = hpP + '%';
+  document.getElementById('mp-fill').style.width = mpP + '%';
+  document.getElementById('exp-fill').style.width = expP + '%';
+  document.getElementById('hp-val').textContent   = `${state.hp} / ${state.maxHp}`;
+  document.getElementById('mp-val').textContent   = `${state.mp} / ${state.maxMp}`;
+  document.getElementById('exp-val').textContent  = `EXP ${state.exp}/${state.expToNext}`;
+  document.getElementById('lvl-badge').textContent= `LVL ${state.level}`;
+
+  // Color danger
+  const hpFill = document.getElementById('hp-fill');
+  if (state.hp / state.maxHp < 0.25) {
+    hpFill.style.background = 'linear-gradient(90deg,#880000,#cc0000)';
+    hpFill.style.boxShadow  = '0 0 8px #ff0000';
+  } else {
+    hpFill.style.background = 'linear-gradient(90deg,#aa1111,#ee3333)';
+    hpFill.style.boxShadow  = '0 0 6px #ff4444';
+  }
+}
+
+function spawnDmgNum(text, color, crit=false) {
+  const vp    = document.getElementById('viewport');
+  const el    = document.createElement('div');
+  el.className = `dmg-num ${crit?'crit':'normal'}`;
+  el.textContent = text;
+  el.style.color = color;
+  el.style.left  = (180 + Math.random()*80) + 'px';
+  el.style.top   = (300 + Math.random()*60) + 'px';
+  el.style.position = 'absolute';
+  el.style.zIndex = '60';
+  el.style.fontFamily = 'serif';
+  el.style.fontWeight = 'bold';
+  el.style.textShadow = `0 0 8px ${color}, 0 2px 0 #000`;
+  vp.appendChild(el);
+  setTimeout(() => el.remove(), 900);
+}
+
+function notify(msg) {
+  const notif = document.getElementById('notif');
+  const el    = document.createElement('div');
+  el.className = 'notif-item';
+  el.textContent = msg;
+  notif.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+// ─── Mini-map ─────────────────────────────────────────────────────────────────
+const mapCanvas = document.getElementById('map-canvas');
+const mapCtx    = mapCanvas.getContext('2d');
+const ROOMS = [
+  {x:4,y:40,w:30,h:12,name:'Entrance Hall'},
+  {x:34,y:30,w:20,h:12,name:'Courtyard'},
+  {x:54,y:20,w:15,h:12,name:'Gallery'},
+  {x:34,y:42,w:25,h:10,name:'Catacombs'},
+  {x:59,y:42,w:20,h:10,name:'Library'},
+  {x:79,y:30,w:25,h:22,name:'Clocktower'},
+  {x:104,y:20,w:30,h:12,name:'Throne Hall'},
+  {x:114,y:32,w:20,h:20,name:'Throne Room'},
+];
+const CONNECTIONS = [[0,1],[1,2],[1,3],[2,4],[4,5],[5,6],[6,7],[3,4]];
+let visitedRooms = new Set([0,1,3]);
+let currentRoom  = 1;
+
+function drawMap() {
+  mapCtx.clearRect(0,0,160,100);
+  mapCtx.fillStyle = 'rgba(0,0,0,.8)';
+  mapCtx.fillRect(0,0,160,100);
+
+  // Connections
+  CONNECTIONS.forEach(([a,b]) => {
+    if (!visitedRooms.has(a) && !visitedRooms.has(b)) return;
+    const ra = ROOMS[a], rb = ROOMS[b];
+    mapCtx.strokeStyle = '#330044';
+    mapCtx.lineWidth = 1;
+    mapCtx.beginPath();
+    mapCtx.moveTo(ra.x+ra.w/2, ra.y+ra.h/2);
+    mapCtx.lineTo(rb.x+rb.w/2, rb.y+rb.h/2);
+    mapCtx.stroke();
+  });
+
+  // Rooms
+  ROOMS.forEach((r,i) => {
+    if (!visitedRooms.has(i)) return;
+    const isActive = i === currentRoom;
+    mapCtx.fillStyle   = isActive ? '#330066' : '#1a0033';
+    mapCtx.strokeStyle = isActive ? '#cc66ff' : '#440066';
+    mapCtx.lineWidth   = isActive ? 1.5 : 1;
+    mapCtx.beginPath();
+    mapCtx.rect(r.x, r.y, r.w, r.h);
+    mapCtx.fill();
+    mapCtx.stroke();
+  });
+
+  // Player dot
+  const cr = ROOMS[currentRoom];
+  mapCtx.fillStyle = '#ffffff';
+  mapCtx.beginPath();
+  mapCtx.arc(cr.x+cr.w/2, cr.y+cr.h/2, 2.5, 0, Math.PI*2);
+  mapCtx.fill();
+}
+drawMap();
+
+// ─── Interactive Simulations ──────────────────────────────────────────────────
+function simDamage() {
+  const dmg = Math.floor(Math.random()*40+15);
+  state.hp  = Math.max(0, state.hp - dmg);
+  updateBars();
+  spawnDmgNum(`-${dmg}`, '#ff4444');
+  burst(220, 360, 12, {color:'#ff3300',speed:60,life:.3,r:2});
+  // Viewport red flash
+  const vp = document.getElementById('viewport');
+  vp.style.boxShadow = 'inset 0 0 60px rgba(255,0,0,.4)';
+  setTimeout(() => vp.style.boxShadow = '', 250);
+  if (state.hp === 0) notify('☠ YOU DIED');
+}
+
+function simHeal() {
+  const amt = Math.floor(Math.random()*60+20);
+  state.hp  = Math.min(state.maxHp, state.hp + amt);
+  updateBars();
+  spawnDmgNum(`+${amt}`, '#44ff88', false);
+  burst(220, 360, 16, {color:'#22ff66',speed:50,life:.5,r:1.5,gravity:-80});
+}
+
+function simExpGain() {
+  const gain = Math.floor(Math.random()*200+50);
+  state.exp += gain;
+  notify(`EXP +${gain}`);
+  if (state.exp >= state.expToNext) simLevelUp();
+  else updateBars();
+}
+
+function simLevelUp() {
+  state.level++;
+  state.exp = 0;
+  state.expToNext = Math.floor(state.expToNext * 1.4);
+  state.maxHp += 20; state.hp = state.maxHp;
+  state.maxMp += 10; state.mp = state.maxMp;
+  updateBars();
+  notify(`✨ LEVEL UP! — Now LVL ${state.level}`);
+  burst(480, 270, 40, {color:'#ffdd00',speed:150,life:.7,r:2.5,gravity:80});
+  burst(480, 270, 20, {color:'#ffffff',speed:80,life:.5,r:1,gravity:30});
+  // Explore new room on level up
+  visitedRooms.add(visitedRooms.size);
+  currentRoom = visitedRooms.size - 1;
+  drawMap();
+}
+
+function simBossStart() {
+  const bossBar = document.getElementById('boss-bar');
+  bossBar.classList.add('active');
+  notify('⚠ BOSS ENCOUNTERED — DEATH THE GRIM REAPER');
+  burst(480, 200, 30, {color:'#9900ff',speed:120,life:.8,r:3,gravity:60});
+}
+
+function simBossEnd() {
+  const fill = document.getElementById('boss-fill');
+  let hp = parseInt(fill.style.width);
+  const interval = setInterval(() => {
+    hp -= 5;
+    state.bossHp = Math.max(0, hp);
+    fill.style.width = hp + '%';
+    if (hp <= 0) {
+      clearInterval(interval);
+      document.getElementById('boss-bar').classList.remove('active');
+      notify('✅ BOSS DEFEATED! — SOUL CRYSTALLIZED');
+      burst(480, 250, 80, {color:'#aa00ff',speed:200,life:1,r:3,gravity:100});
+    }
+  }, 50);
+}
+
+function simCrit() {
+  const dmg = Math.floor(Math.random()*120+60);
+  spawnDmgNum(`CRITICAL! ${dmg}`, '#ffdd00', true);
+  burst(220, 340, 20, {color:'#ffff00',speed:100,life:.5,r:2,gravity:120});
+  notify('⚡ CRITICAL HIT!');
+}
+
+function simItemDrop() {
+  const items = ['⚔️ Flame Sword dropped!','🛡️ Dragon Mail found!','💎 Bloodstone obtained!','📜 Magic Tome collected!'];
+  notify(items[Math.floor(Math.random()*items.length)]);
+  burst(300, 380, 15, {color:'#ffaa00',speed:60,life:.5,r:1.5,gravity:-40});
+}
+
+function simStatus() {
+  notify('☠ CURSED — Cannot heal for 10 seconds');
+  const icons = document.getElementById('status-effects');
+  const el = document.createElement('div');
+  el.className = 'status-icon';
+  el.innerHTML = '☠<div class="timer" style="width:100%;background:#9900ff;transition:width 10s linear"></div>';
+  icons.appendChild(el);
+  requestAnimationFrame(() => {
+    el.querySelector('.timer').style.width = '0%';
+  });
+  setTimeout(() => el.remove(), 10500);
+}
+
+// Init
+updateBars();
+</script>
+</body>
+</html>
