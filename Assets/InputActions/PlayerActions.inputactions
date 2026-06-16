@@ -1,0 +1,93 @@
+{
+    "name": "PlayerActions",
+    "maps": [
+        {
+            "name": "Player",
+            "id": "a1b2c3d4-0001-0001-0001-000000000001",
+            "actions": [
+                {
+                    "name": "Move",
+                    "type": "Value",
+                    "id": "a1b2c3d4-0002-0001-0001-000000000001",
+                    "expectedControlType": "Vector2",
+                    "bindings": [
+                        { "path": "<Keyboard>/a",          "action": "Move", "id": "00000001", "processors": "", "interactions": "", "groups": "Keyboard" },
+                        { "path": "<Keyboard>/d",          "action": "Move", "id": "00000002", "processors": "", "interactions": "", "groups": "Keyboard" },
+                        { "path": "<Keyboard>/leftArrow",  "action": "Move", "id": "00000003", "processors": "", "interactions": "", "groups": "Keyboard" },
+                        { "path": "<Keyboard>/rightArrow", "action": "Move", "id": "00000004", "processors": "", "interactions": "", "groups": "Keyboard" },
+                        { "path": "<Gamepad>/leftStick",   "action": "Move", "id": "00000005", "processors": "", "interactions": "", "groups": "Gamepad"  },
+                        { "path": "<Gamepad>/dpad",        "action": "Move", "id": "00000006", "processors": "", "interactions": "", "groups": "Gamepad"  }
+                    ]
+                },
+                {
+                    "name": "Jump",
+                    "type": "Button",
+                    "id": "a1b2c3d4-0003-0001-0001-000000000001",
+                    "expectedControlType": "Button",
+                    "bindings": [
+                        { "path": "<Keyboard>/space",      "action": "Jump", "id": "00000007" },
+                        { "path": "<Keyboard>/w",          "action": "Jump", "id": "00000008" },
+                        { "path": "<Keyboard>/upArrow",    "action": "Jump", "id": "00000009" },
+                        { "path": "<Gamepad>/buttonSouth", "action": "Jump", "id": "0000000a" }
+                    ]
+                },
+                {
+                    "name": "Dash",
+                    "type": "Button",
+                    "id": "a1b2c3d4-0004-0001-0001-000000000001",
+                    "expectedControlType": "Button",
+                    "bindings": [
+                        { "path": "<Keyboard>/leftShift",  "action": "Dash", "id": "0000000b" },
+                        { "path": "<Gamepad>/buttonEast",  "action": "Dash", "id": "0000000c" }
+                    ]
+                },
+                {
+                    "name": "Attack",
+                    "type": "Button",
+                    "id": "a1b2c3d4-0005-0001-0001-000000000001",
+                    "expectedControlType": "Button",
+                    "bindings": [
+                        { "path": "<Keyboard>/j",           "action": "Attack", "id": "0000000d" },
+                        { "path": "<Gamepad>/buttonWest",   "action": "Attack", "id": "0000000e" },
+                        { "path": "<Gamepad>/rightTrigger", "action": "Attack", "id": "0000000f" }
+                    ]
+                },
+                {
+                    "name": "Spell",
+                    "type": "Button",
+                    "id": "a1b2c3d4-0006-0001-0001-000000000001",
+                    "expectedControlType": "Button",
+                    "bindings": [
+                        { "path": "<Keyboard>/k",           "action": "Spell", "id": "00000010" },
+                        { "path": "<Gamepad>/buttonNorth",  "action": "Spell", "id": "00000011" },
+                        { "path": "<Gamepad>/leftTrigger",  "action": "Spell", "id": "00000012" }
+                    ]
+                },
+                {
+                    "name": "Interact",
+                    "type": "Button",
+                    "id": "a1b2c3d4-0007-0001-0001-000000000001",
+                    "expectedControlType": "Button",
+                    "bindings": [
+                        { "path": "<Keyboard>/e",           "action": "Interact", "id": "00000013" },
+                        { "path": "<Gamepad>/buttonNorth",  "action": "Interact", "id": "00000014" }
+                    ]
+                },
+                {
+                    "name": "Pause",
+                    "type": "Button",
+                    "id": "a1b2c3d4-0008-0001-0001-000000000001",
+                    "expectedControlType": "Button",
+                    "bindings": [
+                        { "path": "<Keyboard>/escape",      "action": "Pause", "id": "00000015" },
+                        { "path": "<Gamepad>/start",        "action": "Pause", "id": "00000016" }
+                    ]
+                }
+            ]
+        }
+    ],
+    "controlSchemes": [
+        { "name": "Keyboard", "bindingGroup": "Keyboard", "devices": [{ "devicePath": "<Keyboard>", "isOptional": false }] },
+        { "name": "Gamepad",  "bindingGroup": "Gamepad",  "devices": [{ "devicePath": "<Gamepad>",  "isOptional": false }] }
+    ]
+}
