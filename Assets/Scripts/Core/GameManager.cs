@@ -17,8 +17,13 @@ namespace MidnightReturn.Core
         public Dictionary<string, int>  Inventory      = new();
         public HashSet<string>          MapExplored    = new();
         public HashSet<string>          DefeatedBosses = new();
-        public string CurrentRoom = "entrance_hall";
-        public float  Playtime    = 0f;
+        public string CurrentRoom        = "entrance_hall_01";
+        public string LastSaveStatueId   = "";
+        public Vector3 LastSavePosition  = Vector3.zero;
+        public float  Playtime           = 0f;
+
+        // Map persistence
+        public HashSet<string> UnlockedDoors = new();
 
         // Equipped item IDs
         public string RightHandId, LeftHandId, HelmetId, BodyId, CloakId, BootsId;

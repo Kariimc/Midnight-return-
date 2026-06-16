@@ -36,22 +36,25 @@ namespace MidnightReturn.Player
 
         private void OnEnable()
         {
-            _jumpAction.performed   += _ => JumpBuffer   = BUFFER_FRAMES;
-            _dashAction.performed   += _ => DashBuffer   = BUFFER_FRAMES;
-            _attackAction.performed += _ => AttackBuffer = BUFFER_FRAMES;
-            _spellAction.performed  += _ => SpellBuffer  = BUFFER_FRAMES;
-            _jumpAction.canceled    += _ => JumpHeld     = false;
-            _jumpAction.performed   += _ => JumpHeld     = true;
+            _jumpAction.performed    += _ => JumpBuffer    = BUFFER_FRAMES;
+            _dashAction.performed    += _ => DashBuffer    = BUFFER_FRAMES;
+            _attackAction.performed  += _ => AttackBuffer  = BUFFER_FRAMES;
+            _spellAction.performed   += _ => SpellBuffer   = BUFFER_FRAMES;
+            _interactAction.performed+= _ => _interactBuffer = BUFFER_FRAMES;
+            _jumpAction.canceled     += _ => JumpHeld      = false;
+            _jumpAction.performed    += _ => JumpHeld      = true;
         }
+
+        private int _interactBuffer;
 
         private void Update()
         {
             MoveAxis = _moveAction.ReadValue<Vector2>();
-            // Tick down buffers
-            if (JumpBuffer   > 0) JumpBuffer--;
-            if (DashBuffer   > 0) DashBuffer--;
-            if (AttackBuffer > 0) AttackBuffer--;
-            if (SpellBuffer  > 0) SpellBuffer--;
+            if (JumpBuffer      > 0) JumpBuffer--;
+            if (DashBuffer      > 0) DashBuffer--;
+            if (AttackBuffer    > 0) AttackBuffer--;
+            if (SpellBuffer     > 0) SpellBuffer--;
+            if (_interactBuffer > 0) _interactBuffer--;
         }
 
         public bool HasJump   => JumpBuffer   > 0;
@@ -69,5 +72,13 @@ namespace MidnightReturn.Player
         public bool IsPressingDown  => MoveAxis.y < -0.1f;
         public bool IsPressingUp    => MoveAxis.y >  0.1f;
         public bool IsInteractJustDown => _interactAction.WasPerformedThisFrame();
+
+        // Buffered consume — used by SaveStatue and future interactables
+        public bool ConsumeInteract()
+        {
+            if (_interactBuffer <= 0) return false;
+            _interactBuffer = 0;
+            return true;
+        }
     }
 }

@@ -44,4 +44,10 @@ namespace MidnightReturn.Utils
     public struct PlayerAttackEvent   { public UnityEngine.Vector3 Origin; public int Direction; public int ComboIndex; }
     public struct ScreenFlashEvent    { public UnityEngine.Color Color; public float Duration; }
     public struct CameraShakeEvent    { public float Intensity; public float Duration; }
+
+    // ── Map / room events ──────────────────────────────────────────────
+    public struct RoomTransitionStartedEvent  { public string FromRoomId; public string ToRoomId; }
+    public struct RoomTransitionCompleteEvent { public string RoomId; public string DisplayName; public MidnightReturn.Map.ZoneType Zone; }
+    public struct RoomTransitionBlockedEvent  { public string RequiredItemId; public MidnightReturn.Map.DoorType DoorType; }
+    public struct SaveStatueActivatedEvent    { public string StatueId; }
 }
