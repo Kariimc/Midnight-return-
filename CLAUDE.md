@@ -82,6 +82,11 @@ Event catalogue: `PlayerDamagedEvent`, `PlayerDiedEvent`, `PlayerLeveledUpEvent`
 | Fake SSS for creatures | `FakeSSSGothic_float` |
 | Screen distortion | `ScreenDistortion_float` |
 
+### Asset / Animation Reference
+`Assets/Art/AssetReference.md` — SotN sprite sheets catalogued (reference only; art ships 2.5D HDRP/WebGL).
+Maps player animation states → Animator clip-name contract + StateMachine (flags gaps: Walk, AirAttack,
+SubWeapon, Crouch, TurnAround, DragonKick, Climb), weapon/armor tier priority, enemy roster → zone/AI.
+
 ### Enemy Roster (17 enemies, data in `web-prototype/src/data/enemies.ts`)
 Zones: Entrance Hall → Catacombs → Cursed Library → Clocktower → Throne Room
 AI types: Patrol, Chase, PatrolJump, Ranged, Flying, Boss
