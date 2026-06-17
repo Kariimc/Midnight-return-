@@ -186,3 +186,10 @@ Level-up: random stat growth with variance, full HP/MP restore
   - Assets/Settings/LevelArtSetup.md — tile/parallax/lighting/climb wiring guide
   - web-prototype/public/level-art-demo.html — Three.js: 5 parallax depths, shader-tiled ground+wall, torch bloom, live per-zone lighting (keys ◂▸ pan, Space auto, 1–5 zones)
   - All 15 player animation states now complete (Climb was the last gap)
+- [x] Vertical Slice: first playable room — all 7 phases through one code path
+  - VerticalSliceContent.cs — code-authored content (no hand-written .asset): builds TilemapLayerSO (main+bg via rect/line grid helpers), TileSetSO, world-unit-tuned EnemyDataSO (Zombie/Skeleton); exposes room feature coords + SurfaceY/ColX world-space helpers
+  - VerticalSliceBootstrap.cs — runtime room assembly: bakes tile meshes, spawns 2 PatrolEnemy on enemy layer, places SaveStatue + ClimbableVolume ladder, repositions Player, emits ONE RoomTransitionCompleteEvent (MusicDirector/ZoneLightingController self-activate — zero direct wiring = the decoupling proof)
+  - EnemyBase.cs — Configure(EnemyDataSO) runtime injection (serialized Data can't be set externally)
+  - TileChunkBuilder.cs — Configure(TileSetSO, TilemapLayerSO) runtime injection
+  - Assets/VerticalSlice/SETUP.md — scene wiring + the pixel→world-unit EnemyDataSO tuning finding
+  - web-prototype/public/vertical-slice-demo.html — fully playable canvas build of the room: patrol/chase enemies, pit jump, ladder climb, save statue, top-left HUD, attack + sub-weapon, level-ups (← → move, ↑↓ climb, Z/Space jump, J attack, K sub-weapon, E save)

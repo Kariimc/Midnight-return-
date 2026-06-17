@@ -58,6 +58,15 @@ namespace MidnightReturn.Enemies
             if (playerObj != null) _player = playerObj.transform;
         }
 
+        // Runtime injection point — lets a procedural builder (e.g. the vertical
+        // slice bootstrap) supply an EnemyDataSO after AddComponent, since the
+        // serialized Data field can't be set from outside the inspector.
+        public void Configure(EnemyDataSO data)
+        {
+            Data = data;
+            if (data != null) Hp = data.MaxHp;
+        }
+
         private void Update()
         {
             if (_isDying) return;

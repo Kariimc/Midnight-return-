@@ -25,6 +25,14 @@ namespace MidnightReturn.Level
             if (_buildOnAwake) Build();
         }
 
+        // Runtime injection point — lets a procedural builder assign the palette
+        // and layer after AddComponent, since both fields are serialized/private.
+        public void Configure(TileSetSO tileSet, TilemapLayerSO layer)
+        {
+            _tileSet = tileSet;
+            _layer   = layer;
+        }
+
         [ContextMenu("Build Tilemap")]
         public void Build()
         {
