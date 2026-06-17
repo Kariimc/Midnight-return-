@@ -71,10 +71,10 @@ namespace MidnightReturn.Level
                     uvs.Add(new Vector2(uv.z, uv.w));
                     uvs.Add(new Vector2(uv.x, uv.w));
 
-                    for (int n = 0; n < 4; n++) norms.Add(Vector3.back);
+                    for (int n = 0; n < 4; n++) norms.Add(Vector3.forward);
 
-                    tris.Add(vbase);     tris.Add(vbase + 2); tris.Add(vbase + 1);
-                    tris.Add(vbase);     tris.Add(vbase + 3); tris.Add(vbase + 2);
+                    tris.Add(vbase);     tris.Add(vbase + 1); tris.Add(vbase + 2);
+                    tris.Add(vbase);     tris.Add(vbase + 2); tris.Add(vbase + 3);
                 }
             }
 

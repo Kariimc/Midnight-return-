@@ -1,7 +1,6 @@
 using UnityEngine;
 using MidnightReturn.Utils;
 using MidnightReturn.Systems;
-using MidnightReturn.Systems.Inventory;
 
 namespace MidnightReturn.Player.States
 {

@@ -26,10 +26,8 @@ namespace MidnightReturn.Player.States
 
             Player.Animator.CrossFadeInFixedTime("AirAttack", 0.04f);
 
-            // Brief vertical hold so the animation reads cleanly in the air
-            var v = Movement.Velocity;
-            if (v.y < 0f) v.y = Mathf.Max(v.y, -Y_BOOST);
-            // (velocity is read-only; nudge happens via PlayerMovement next Tick)
+            // Brief upward nudge so the animation reads cleanly while falling
+            Movement.NudgeVelocityY(-Y_BOOST);
 
             VFXManager.Instance?.PlayWeaponSwing(Player.transform.position, Movement.FacingDir, 0);
 

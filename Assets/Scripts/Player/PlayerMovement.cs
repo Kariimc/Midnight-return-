@@ -18,7 +18,7 @@ namespace MidnightReturn.Player
         [SerializeField] float FrictionAir    = 12f;
 
         [Header("Jump")]
-        [SerializeField] float JumpVelocity   = -17f; // negative = up in world-space (we flip gravity)
+        [SerializeField] float JumpVelocity   = 17f;
         [SerializeField] float JumpCutFactor  = 0.4f;
         [SerializeField] float FallGravity    = 48f;
         [SerializeField] float JumpGravity    = 30f;
@@ -98,6 +98,13 @@ namespace MidnightReturn.Player
         public void SetDiveVelocity(float vx, float vy)
         {
             Velocity = new Vector2(vx, vy);
+        }
+
+        // Clamps fall speed so a falling player gets a brief upward nudge during
+        // aerial attacks (AirAttack Y-boost).
+        public void NudgeVelocityY(float minY)
+        {
+            if (Velocity.y < minY) Velocity = new Vector2(Velocity.x, minY);
         }
 
         // ── Climbing (ladders / chains) ───────────────────────────────────────
