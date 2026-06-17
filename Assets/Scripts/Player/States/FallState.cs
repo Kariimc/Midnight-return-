@@ -22,16 +22,23 @@ namespace MidnightReturn.Player.States
 
             if (Movement.IsGrounded)
             {
-                // Land — trigger VFX and screen shake
                 VFXManager.Instance?.SpawnLandDust(Player.transform.position);
                 EventBus.Emit(new CameraShakeEvent { Intensity = 0.06f, Duration = 0.12f });
                 Player.FSM.Transition(Input.IsPressingLeft || Input.IsPressingRight ? "Run" : "Idle");
                 return;
             }
 
-            if (Input.HasAttack) { Player.FSM.Transition("Attack"); return; }
-            if (Input.HasJump)   { Player.FSM.Transition("Jump");   return; }
-            if (Input.HasDash)   { Player.FSM.Transition("Dash");   return; }
+            if (Input.HasDash)   { Player.FSM.Transition("Dash");      return; }
+            if (Input.HasSpell)  { Player.FSM.Transition("SubWeapon"); return; }
+            if (Input.HasJump)   { Player.FSM.Transition("Jump");      return; }
+
+            // Down+Attack → DragonKick dive-kick
+            if (Input.HasAttack && Input.IsPressingDown)
+                { Player.FSM.Transition("DragonKick"); return; }
+
+            // Regular aerial attack
+            if (Input.HasAttack)
+                { Player.FSM.Transition("AirAttack"); return; }
         }
     }
 }

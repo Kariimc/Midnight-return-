@@ -11,31 +11,31 @@
 Source sheet (col. 3) → our `Animator` clip name → `StateMachine<PlayerState>` state.
 `AttackState` already drives a 3-hit combo via `_comboAnims[]`.
 
-| # | SotN Sheet State        | Animator Clip      | StateMachine State | Status | Notes |
-|---|-------------------------|--------------------|--------------------|--------|-------|
-| 1 | Idle                    | `Idle`             | `IdleState`        | ✅ done | breathing bob |
-| 2 | Walking                 | `Walk`             | —                  | ⬜ gap  | SotN splits walk/run; add slow-tilt walk under run threshold |
-| 3 | Running                 | `Run`              | `RunState`         | ✅ done | |
-| 4 | Jumping                 | `Jump`             | `JumpState`        | ✅ done | variable-height already wired |
-| 5 | Falling                 | `Fall`             | `FallState`        | ✅ done | |
-| 6 | Dashing                 | `Dash`             | `DashState`        | ✅ done | afterimage MaterialPropertyBlock |
-| 7 | Wall slide / cling      | `WallSlide`        | `WallSlideState`   | ✅ done | |
-| 8 | Attacking with weapon   | `Attack1/2/3`      | `AttackState`      | ✅ done | 3-hit combo |
-| 9 | Attacking (air)         | `AirAttack`        | `AttackState`      | ⬜ gap  | branch AttackState on `!IsGrounded` |
-|10 | Sub-weapon throw        | `SubWeapon`        | —                  | ⬜ gap  | maps to `PlayerSpellSystem.TryCast` (Projectile) — needs throw anim |
-|11 | Crouching               | `Crouch`           | —                  | ⬜ gap  | needs shorter CharacterController height + crouch-attack |
-|12 | Turning around          | `TurnAround`       | —                  | ⬜ opt  | 3-frame pivot; cosmetic, fires on FacingDir flip |
-|13 | Dragon Kick (down+atk)  | `DragonKick`       | —                  | ⬜ gap  | aerial dive-kick special; new state, down+Attack while airborne |
-|14 | Climbing (ladder/chain) | `Climb`            | —                  | ⬜ gap  | needs ClimbState + climbable trigger volumes |
-|15 | Death                   | `Death`            | (locked FSM)       | ✅ done | dissolve via VFXManager |
+| # | SotN Sheet State        | Animator Clip      | StateMachine State   | Status | Notes |
+|---|-------------------------|--------------------|-----------------------|--------|-------|
+| 1 | Idle                    | `Idle`             | `IdleState`           | ✅ done | breathing bob |
+| 2 | Walking                 | `Walk`             | `WalkState`           | ✅ done | demote from Run when axis < 0.6; gamepad meaningful |
+| 3 | Running                 | `Run`              | `RunState`            | ✅ done | |
+| 4 | Jumping                 | `Jump`             | `JumpState`           | ✅ done | variable-height already wired |
+| 5 | Falling                 | `Fall`             | `FallState`           | ✅ done | |
+| 6 | Dashing                 | `Dash`             | `DashState`           | ✅ done | afterimage MaterialPropertyBlock |
+| 7 | Wall slide / cling      | `WallSlide`        | `WallSlideState`      | ✅ done | |
+| 8 | Attacking with weapon   | `Attack1/2/3`      | `AttackState`         | ✅ done | 3-hit combo |
+| 9 | Attacking (air)         | `AirAttack`        | `AirAttackState`      | ✅ done | Jump/Fall + Attack (no Down); brief Y-hold; single hit |
+|10 | Sub-weapon throw        | `SubWeapon`        | `SubWeaponState`      | ✅ done | Spell input from any grounded/aerial state; fires TryCast(0) at throw frame |
+|11 | Crouching               | `Crouch`           | `CrouchState`         | ✅ done | CC height ×0.55, center adjusted; crouch-attack via Attack1 |
+|12 | Turning around          | `TurnAround`       | `TurnAroundState`     | ✅ done | 0.08s cosmetic pivot; fires from Idle/Run on direction flip |
+|13 | Dragon Kick (down+atk)  | `DragonKick`       | `DragonKickState`     | ✅ done | Down+Attack airborne; dive velocity 26u/s; AOE burst on land |
+|14 | Climbing (ladder/chain) | `Climb`            | —                     | ⬜ gap  | needs ClimbState + climbable trigger volumes (Phase 7 or later) |
+|15 | Death                   | `Death`            | (locked FSM)          | ✅ done | dissolve via VFXManager |
 
 **Canonical clip-name contract** — the Animator Controller must expose exactly these state names
 (case-sensitive), since `CrossFadeInFixedTime("<name>")` is called by string:
 `Idle, Walk, Run, Jump, Fall, Dash, WallSlide, Attack1, Attack2, Attack3, AirAttack,
 SubWeapon, Crouch, TurnAround, DragonKick, Climb, Death`
 
-**Build order for the gaps (cheap → expensive):** TurnAround → AirAttack → SubWeapon → Crouch → DragonKick → Climb.
-Climb is last (needs climbable-volume system + vertical movement override).
+**Only remaining gap:** Climb — needs a climbable-volume trigger system and vertical movement
+override in PlayerMovement. Deferred to Phase 7 (level art pipeline).
 
 ---
 

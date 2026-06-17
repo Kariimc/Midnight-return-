@@ -64,6 +64,35 @@ namespace MidnightReturn.Player
 
         private void Awake() => _cc = GetComponent<CharacterController>();
 
+        // ── Crouch physics ────────────────────────────────────────────────────
+        private float   _defaultCCHeight;
+        private Vector3 _defaultCCCenter;
+        private bool    _crouching;
+
+        public void SetCrouch(bool crouch)
+        {
+            if (_crouching == crouch) return;
+            _crouching = crouch;
+            if (crouch)
+            {
+                _defaultCCHeight = _cc.height;
+                _defaultCCCenter = _cc.center;
+                _cc.height = _defaultCCHeight * 0.55f;
+                _cc.center = new Vector3(_defaultCCCenter.x, _defaultCCCenter.y * 0.55f, 0f);
+            }
+            else
+            {
+                _cc.height = _defaultCCHeight;
+                _cc.center = _defaultCCCenter;
+            }
+        }
+
+        // ── Dive velocity (DragonKick) ────────────────────────────────────────
+        public void SetDiveVelocity(float vx, float vy)
+        {
+            Velocity = new Vector2(vx, vy);
+        }
+
         public void Tick(float dt, PlayerInputHandler input)
         {
             SyncGroundState();

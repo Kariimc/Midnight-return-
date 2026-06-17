@@ -13,10 +13,18 @@ namespace MidnightReturn.Player.States
 
         public override void OnUpdate(float dt)
         {
-            if (Movement.IsGrounded)      { Player.FSM.Transition("Idle");   return; }
-            if (Input.HasAttack)           { Player.FSM.Transition("Attack"); return; }
-            if (Input.HasDash)             { Player.FSM.Transition("Dash");   return; }
-            if (Movement.Velocity.y < -1f) { Player.FSM.Transition("Fall");   return; }
+            if (Movement.IsGrounded)      { Player.FSM.Transition("Idle");       return; }
+            if (Input.HasDash)             { Player.FSM.Transition("Dash");       return; }
+            if (Input.HasSpell)            { Player.FSM.Transition("SubWeapon");  return; }
+            if (Movement.Velocity.y < -1f) { Player.FSM.Transition("Fall");       return; }
+
+            // Down+Attack → DragonKick dive
+            if (Input.HasAttack && Input.IsPressingDown)
+                { Player.FSM.Transition("DragonKick"); return; }
+
+            // Regular aerial attack
+            if (Input.HasAttack)
+                { Player.FSM.Transition("AirAttack"); return; }
         }
     }
 }

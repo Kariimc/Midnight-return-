@@ -17,10 +17,11 @@ namespace MidnightReturn.Player
     public class PlayerController : MonoBehaviour
     {
         // ── Subsystem references (wired by Unity Inspector) ───────────────────
-        [HideInInspector] public PlayerMovement    Movement;
+        [HideInInspector] public PlayerMovement     Movement;
         [HideInInspector] public PlayerInputHandler Input;
-        [HideInInspector] public PlayerCombat       Combat;
-        [HideInInspector] public Animator           Animator;
+        [HideInInspector] public PlayerCombat        Combat;
+        [HideInInspector] public Animator            Animator;
+        [HideInInspector] public PlayerSpellSystem   SpellSystem; // null-safe; optional
 
         public  StateMachine<PlayerController>     FSM { get; private set; }
 
@@ -46,11 +47,12 @@ namespace MidnightReturn.Player
 
         private void Awake()
         {
-            Movement = GetComponent<PlayerMovement>();
-            Input    = GetComponent<PlayerInputHandler>();
-            Combat   = GetComponent<PlayerCombat>();
-            Animator = GetComponent<Animator>();
-            Stats    = new StatBlock();
+            Movement    = GetComponent<PlayerMovement>();
+            Input       = GetComponent<PlayerInputHandler>();
+            Combat      = GetComponent<PlayerCombat>();
+            Animator    = GetComponent<Animator>();
+            SpellSystem = GetComponent<PlayerSpellSystem>(); // optional — null if not present
+            Stats       = new StatBlock();
 
             BuildFSM();
         }
@@ -59,12 +61,18 @@ namespace MidnightReturn.Player
         {
             FSM = new StateMachine<PlayerController>();
             FSM.Add(new IdleState(this))
+               .Add(new WalkState(this))
+               .Add(new TurnAroundState(this))
                .Add(new RunState(this))
                .Add(new JumpState(this))
                .Add(new FallState(this))
                .Add(new DashState(this))
                .Add(new WallSlideState(this))
-               .Add(new AttackState(this));
+               .Add(new AttackState(this))
+               .Add(new AirAttackState(this))
+               .Add(new SubWeaponState(this))
+               .Add(new CrouchState(this))
+               .Add(new DragonKickState(this));
             FSM.Transition("Idle");
         }
 

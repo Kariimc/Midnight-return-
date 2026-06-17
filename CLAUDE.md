@@ -99,6 +99,20 @@ SotN sprites run as atlas-sampled quads in HDRP 3D space. Drop PNG at `Assets/Ar
 - `Assets/Art/Reference/SETUP.md` — PNG import settings, SpriteSheetDataSO config, prefab wiring guide
 - `web-prototype/public/game-visual-demo.html` — SPRITE_SHEET_URL const + SPRITE_FRAG atlas sampler with analytic torch lighting; keyboard shortcuts i/r/j/f/d/1/2/3 cycle states, arrow keys flip facing
 
+### Animation Gap States (14/15 complete — Climb deferred to Phase 7)
+New states added to PlayerController FSM (all registered in BuildFSM):
+- `WalkState` — slow-tilt walk, demoted from Run when MoveAxis.x < 0.6 (gamepad partial input)
+- `TurnAroundState` — 0.08s cosmetic pivot on direction flip from Idle or Run
+- `AirAttackState` — single aerial hit (no combo); Jump/Fall + Attack without Down; brief Y-hold; chains to DragonKick
+- `SubWeaponState` — Spell input from any state; plays "SubWeapon", fires PlayerSpellSystem.TryCast(0) at throw frame
+- `CrouchState` — Down while grounded; CC height ×0.55; crouch-attack via Attack1; Jump/Dash escapes
+- `DragonKickState` — Down+Attack while airborne; dive 26u/s; invincible; AOE hitbox + heavy shake + flash on land
+Supporting changes:
+- `PlayerMovement.cs` — SetCrouch() (CC height/center resize), SetDiveVelocity() for DragonKick
+- `PlayerController.cs` — SpellSystem nullable property, all 6 states registered
+- `IdleState/RunState` — TurnAround on dir flip, SubWeapon/Crouch routing
+- `JumpState/FallState` — AirAttack (Attack), DragonKick (Down+Attack), SubWeapon routing
+
 ### Enemy Roster (17 enemies, data in `web-prototype/src/data/enemies.ts`)
 Zones: Entrance Hall → Catacombs → Cursed Library → Clocktower → Throne Room
 AI types: Patrol, Chase, PatrolJump, Ranged, Flying, Boss
