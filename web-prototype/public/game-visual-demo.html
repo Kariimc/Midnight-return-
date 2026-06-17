@@ -25,6 +25,8 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'Cinze
 .msg{font-size:10px;letter-spacing:2px;opacity:0}
 #hint{position:absolute;bottom:18px;right:28px;font-size:8px;letter-spacing:3px;color:rgba(100,84,50,.45)}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20}
+#sprite-note{position:absolute;top:14px;right:18px;font-size:7px;letter-spacing:2px;
+  color:rgba(120,100,60,.45);text-transform:uppercase;line-height:1.7}
 </style>
 </head>
 <body>
@@ -45,6 +47,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'Cinze
   </div>
   <div id="log"></div>
   <div id="hint">CLICK TO ATTACK</div>
+  <div id="sprite-note">Drop SotN_SpriteSheet.png<br>next to this file to load sprites</div>
 </div>
 <div id="flash"></div>
 
@@ -58,6 +61,25 @@ import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass }      from 'three/addons/postprocessing/ShaderPass.js';
+
+// ── SPRITE SHEET CONFIG ───────────────────────────────────────────────────────
+// Drop SotN_SpriteSheet.png next to this HTML file and update SPRITE_SHEET_URL.
+const SPRITE_SHEET_URL = './SotN_SpriteSheet.png';
+const SPRITE_COLS      = 8;   // frames across the sheet
+const SPRITE_ROWS      = 8;   // rows down the sheet
+// Named clips — StartFrame index (left-to-right, top-to-bottom from 0)
+const CLIPS = {
+  Idle:    { start:  0, count: 4, fps:  8, loop: true },
+  Run:     { start:  4, count: 8, fps: 12, loop: true },
+  Jump:    { start: 12, count: 3, fps:  8, loop: false },
+  Fall:    { start: 15, count: 2, fps:  8, loop: true },
+  Dash:    { start: 17, count: 4, fps: 16, loop: false },
+  Attack1: { start: 21, count: 4, fps: 14, loop: false },
+  Attack2: { start: 25, count: 4, fps: 14, loop: false },
+  Attack3: { start: 29, count: 5, fps: 14, loop: false },
+  Death:   { start: 34, count: 6, fps:  8, loop: false },
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── GLSL ─────────────────────────────────────────────────────────────────────
 const UV_VERT = `varying vec2 vUv;
@@ -167,6 +189,83 @@ void main(){
   vec3 col=vec3(.065,.042,.10);
   col+=torch*(dL*atL+dR*atR)*col*3.5;
   gl_FragColor=vec4(col,.93);}`;
+
+// Sprite billboard — samples atlas UV rect, applies analytic torch lighting
+// Falls back to a gothic silhouette when no texture is loaded
+const SPRITE_VERT = `
+uniform float time;
+varying vec2  vUv;
+varying vec3  vWorldPos;
+void main(){
+  vUv = uv;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWorldPos = wp.xyz;
+  // Subtle idle bob passed in via model matrix Y offset (done in JS)
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const SPRITE_FRAG = `
+uniform sampler2D tSprite;
+uniform vec4  uvRect;     // (offsetU, offsetV, scaleU, scaleV)
+uniform int   hasSprite;  // 1 = real texture loaded, 0 = silhouette fallback
+uniform float time;
+varying vec2  vUv;
+varying vec3  vWorldPos;
+
+// Analytic point-light attenuation (matches Three.js scene torch positions)
+vec3 torchLight(vec3 pos, vec3 wpos){
+  vec3 d = pos - wpos;
+  float atten = 5.0 / (1.0 + dot(d,d) * 0.18);
+  return vec3(1.0, 0.42, 0.10) * atten;
+}
+
+void main(){
+  // Remap sprite-quad UV into atlas cell
+  vec2 atlasUV = vec2(
+    uvRect.x + vUv.x * uvRect.z,
+    uvRect.y + (1.0 - vUv.y) * uvRect.w   // flip Y: UV origin bottom-left, atlas top-left
+  );
+
+  vec4 tex = texture2D(tSprite, atlasUV);
+
+  if(hasSprite == 1){
+    if(tex.a < 0.08) discard;  // alpha-clip pixel art transparency
+
+    // Analytic torch lighting applied to sprite color
+    vec3 litL = torchLight(vec3(-3.2, 0.9, -1.8), vWorldPos);
+    vec3 litR = torchLight(vec3( 3.2, 0.9, -1.8), vWorldPos);
+    vec3 ambient = vec3(0.04, 0.03, 0.07);
+    vec3 col = tex.rgb * (ambient + litL + litR);
+
+    // Subtle edge rim for silhouette clarity
+    float edgeMask = tex.a * (1.0 - tex.a * 4.0 + tex.a * tex.a * 5.2);
+    col += vec3(0.12, 0.06, 0.25) * edgeMask * 2.0;
+
+    gl_FragColor = vec4(col, tex.a);
+  } else {
+    // Silhouette fallback — dark gothic figure shape from UV
+    vec2 p = vUv * 2.0 - 1.0;
+    // Head
+    float head = smoothstep(0.22, 0.18, length(p - vec2(0.0, 0.72)));
+    // Body
+    float body = smoothstep(0.0, 0.01, 0.35 - abs(p.x)) *
+                 smoothstep(0.0, 0.01, 0.5 - abs(p.y - 0.18));
+    // Legs
+    float legL = smoothstep(0.0, 0.01, 0.10 - abs(p.x + 0.14)) *
+                 smoothstep(0.0, 0.01, 0.42 - abs(p.y + 0.62));
+    float legR = smoothstep(0.0, 0.01, 0.10 - abs(p.x - 0.14)) *
+                 smoothstep(0.0, 0.01, 0.42 - abs(p.y + 0.62));
+    float mask = clamp(head + body + legL + legR, 0.0, 1.0);
+    if(mask < 0.05) discard;
+
+    vec3 litL = torchLight(vec3(-3.2, 0.9, -1.8), vWorldPos);
+    vec3 litR = torchLight(vec3( 3.2, 0.9, -1.8), vWorldPos);
+    vec3 col = vec3(0.06, 0.04, 0.10) * (vec3(0.08, 0.05, 0.12) + litL * 0.5 + litR * 0.5);
+    // Violet edge glow
+    col += vec3(0.14, 0.07, 0.32) * smoothstep(0.55, 1.0, mask) * 0.5;
+    gl_FragColor = vec4(col, mask);
+  }
+}`;
 
 const POST_FRAG = `
 uniform sampler2D tDiffuse; uniform float time; uniform float ca;
@@ -304,39 +403,96 @@ const eR=makeEmbers(new THREE.Vector3( 3.2,.46,-2.1));
   scene.userData.dustMat=mat;
 }
 
-// ── CHARACTER ─────────────────────────────────────────────────────────────────
-const cg=new THREE.Group();
-const cMat=new THREE.MeshPhongMaterial({color:0x0D0A15,specular:0x181020,shininess:8});
-const eMat=new THREE.MeshPhongMaterial({color:0x0C0918,specular:0x200A28,emissive:0x180A22,shininess:4});
+// ── SPRITE ANIMATION SYSTEM ───────────────────────────────────────────────────
+// Compute UV rect from frame index in atlas (top-left origin, row-major)
+function frameToUV(frameIdx){
+  const col  = frameIdx % SPRITE_COLS;
+  const row  = Math.floor(frameIdx / SPRITE_COLS);
+  const fw   = 1 / SPRITE_COLS;
+  const fh   = 1 / SPRITE_ROWS;
+  return new THREE.Vector4(col * fw, row * fh, fw, fh);
+}
 
-// Cape with GPU cloth animation
-const capeMat=new THREE.ShaderMaterial({
+const spriteState = {
+  clip:      CLIPS.Idle,
+  clipName:  'Idle',
+  frame:     0,
+  timer:     0,
+  facingDir: 1,
+};
+
+function playClip(name){
+  if(!CLIPS[name] || spriteState.clipName === name) return;
+  spriteState.clip     = CLIPS[name];
+  spriteState.clipName = name;
+  spriteState.frame    = 0;
+  spriteState.timer    = 0;
+}
+
+// ── CHARACTER GROUP ───────────────────────────────────────────────────────────
+const cg = new THREE.Group();
+cg.position.set(0, .18, 0);
+scene.add(cg);
+
+// GPU cloth cape (behind sprite)
+const capeMat = new THREE.ShaderMaterial({
   uniforms:{time:{value:0}},
   vertexShader:CAPE_VERT,fragmentShader:CAPE_FRAG,
   side:THREE.DoubleSide,transparent:true});
-const cape=new THREE.Mesh(new THREE.PlaneGeometry(.78,1.12,3,10),capeMat);
-cape.position.set(.04,-.12,-.1); cg.add(cape);
+const cape = new THREE.Mesh(new THREE.PlaneGeometry(.78,1.12,3,10),capeMat);
+cape.position.set(.04,-.12,-.12); cg.add(cape);
 
-// Body geometry helper
-const box=(w,h,d,x,y,z,m=cMat)=>{
-  const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
-  b.position.set(x,y,z); cg.add(b); return b;};
-box(.16,.56,.14,-.1,-.72,0);        // leg L
-box(.16,.56,.14, .1,-.72,0);        // leg R
-box(.52,.58,.17, 0,-.16,0);         // torso
-box(.16,.12,.22,-.30,.07,0,eMat);   // pauldron L
-box(.16,.12,.22, .30,.07,0,eMat);   // pauldron R
-box(.32,.38,.17, 0,.28,0);          // head
-// Red eye — MeshBasicMaterial so it always emits regardless of lighting (bloom catches it)
-const eye=new THREE.Mesh(new THREE.SphereGeometry(.04,7,7),
+// ── SPRITE QUAD ───────────────────────────────────────────────────────────────
+// PlaneGeometry facing camera; 0.7 wide × 1.4 tall (pixel-art proportions)
+const spriteMat = new THREE.ShaderMaterial({
+  uniforms:{
+    tSprite:   { value: null },
+    uvRect:    { value: frameToUV(0) },
+    hasSprite: { value: 0 },
+    time:      { value: 0 },
+  },
+  vertexShader:   SPRITE_VERT,
+  fragmentShader: SPRITE_FRAG,
+  transparent:    true,
+  depthWrite:     false,
+  side:           THREE.FrontSide,
+});
+const spriteQuad = new THREE.Mesh(new THREE.PlaneGeometry(.7, 1.4), spriteMat);
+spriteQuad.position.set(0, 0, 0.01); // slightly in front of cape
+cg.add(spriteQuad);
+
+// Red eye — MeshBasicMaterial so it emits regardless of lighting (bloom catches it)
+const eye = new THREE.Mesh(
+  new THREE.SphereGeometry(.04,7,7),
   new THREE.MeshBasicMaterial({color:0xFF1010}));
 eye.position.set(.09,.30,.10); cg.add(eye);
-// Sword
-const sMat=new THREE.MeshPhongMaterial({color:0x1A2234,specular:0x5070A0,shininess:90});
-box(.04,.76,.022,.44,-.28,0,sMat);  // blade
-box(.17,.042,.055,.44,.04,0,sMat);  // guard
 
-cg.position.set(0,.18,0); scene.add(cg);
+// Sword (3D — stays in front)
+const sMat = new THREE.MeshPhongMaterial({color:0x1A2234,specular:0x5070A0,shininess:90});
+const swordBlade  = new THREE.Mesh(new THREE.BoxGeometry(.04,.76,.022), sMat);
+const swordGuard  = new THREE.Mesh(new THREE.BoxGeometry(.17,.042,.055), sMat);
+swordBlade.position.set(.44,-.28, .08); cg.add(swordBlade);
+swordGuard.position.set(.44,.04,  .08); cg.add(swordGuard);
+
+// ── LOAD SPRITE SHEET ─────────────────────────────────────────────────────────
+const loader = new THREE.TextureLoader();
+loader.load(
+  SPRITE_SHEET_URL,
+  (tex) => {
+    tex.magFilter = THREE.NearestFilter;  // point sampling — crisp pixel art
+    tex.minFilter = THREE.NearestFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    spriteMat.uniforms.tSprite.value   = tex;
+    spriteMat.uniforms.hasSprite.value = 1;
+    document.getElementById('sprite-note').textContent = 'Sprite sheet loaded ✓';
+    document.getElementById('sprite-note').style.color = 'rgba(80,160,80,.6)';
+  },
+  undefined,
+  () => {
+    // Silhouette fallback already handled in shader (hasSprite=0)
+    document.getElementById('sprite-note').style.color = 'rgba(120,80,40,.45)';
+  }
+);
 
 // ── ATTACK SPARKS ─────────────────────────────────────────────────────────────
 const SK=60;
@@ -383,18 +539,21 @@ composer.addPass(postPass);
 
 // ── LOOP ─────────────────────────────────────────────────────────────────────
 const clock=new THREE.Clock();
+let comboIdx=0;
+const COMBO_CLIPS=['Attack1','Attack2','Attack3'];
+
 function animate(){
   requestAnimationFrame(animate);
   const dt=clock.getDelta(), t=clock.getElapsedTime();
 
-  // Torch flicker — two sine waves for organic randomness
+  // Torch flicker
   const fL=1.+Math.sin(t*7.4)*.2+Math.sin(t*13.9)*.09;
   const fR=1.+Math.sin(t*6.2+1.1)*.2+Math.sin(t*12.1)*.09;
   tL.intensity=5.*fL; tR.intensity=5.*fR;
   tLG.userData.flame.scale.setScalar(.75+fL*.32);
   tRG.userData.flame.scale.setScalar(.75+fR*.32);
 
-  // Cape
+  // Cape animation
   capeMat.uniforms.time.value=t;
 
   // Character idle bob
@@ -404,6 +563,30 @@ function animate(){
   // Eye pulse
   eyeL.intensity=.7+Math.sin(t*2.3)*.32;
   eye.scale.setScalar(.82+Math.sin(t*3.0)*.22);
+
+  // Sprite animation tick
+  spriteState.timer += dt;
+  const spf = 1 / Math.max(1, spriteState.clip.fps);
+  if(spriteState.timer >= spf){
+    spriteState.timer -= spf;
+    spriteState.frame++;
+    if(spriteState.frame >= spriteState.clip.count){
+      if(spriteState.clip.loop){
+        spriteState.frame = 0;
+      } else {
+        spriteState.frame = spriteState.clip.count - 1;
+        // Return to idle after non-looping clips finish
+        if(spriteState.clipName !== 'Idle') playClip('Idle');
+      }
+    }
+  }
+  const absFrame = spriteState.clip.start + spriteState.frame;
+  spriteMat.uniforms.uvRect.value = frameToUV(absFrame);
+  spriteMat.uniforms.time.value   = t;
+
+  // Sprite facing dir — scale X to flip
+  spriteQuad.scale.x = spriteState.facingDir;
+  cape.scale.x       = spriteState.facingDir;
 
   // Particles
   eL.material.uniforms.time.value=t;
@@ -452,9 +635,17 @@ document.addEventListener('click',e=>{
     duration:.055,yoyo:true,repeat:4,
     onComplete:()=>{ camera.position.x=0; camera.position.y=.25; }});
 
-  // Sword swing
-  gsap.to(cg.rotation,{z:-.45,duration:.07,ease:'power4.out'});
-  gsap.to(cg.rotation,{z:0,duration:.32,delay:.07,ease:'elastic.out(1,.6)'});
+  // Sprite: play attack clip
+  const clipName = COMBO_CLIPS[comboIdx % 3];
+  playClip(clipName);
+  comboIdx++;
+
+  // Sword swing (3D geometry also reacts)
+  const sword = new THREE.Group(); // swing the sword group
+  gsap.to(swordBlade.rotation,{z:-.45,duration:.07,ease:'power4.out'});
+  gsap.to(swordBlade.rotation,{z:0,duration:.32,delay:.07,ease:'elastic.out(1,.6)'});
+  gsap.to(swordGuard.rotation,{z:-.45,duration:.07,ease:'power4.out'});
+  gsap.to(swordGuard.rotation,{z:0,duration:.32,delay:.07,ease:'elastic.out(1,.6)'});
 
   // Bloom spike
   gsap.to(bloom,{strength:3.4,duration:.06});
@@ -467,6 +658,14 @@ document.addEventListener('click',e=>{
   const crit=Math.random()<.2;
   const dmg=18+Math.floor(Math.random()*30);
   log(crit?`CRITICAL — ${dmg*2}`:`${dmg} DMG`,crit?'#ffd040':'#d4a030');
+});
+
+// Keyboard shortcuts — quick state demo
+document.addEventListener('keydown',e=>{
+  const map={'i':'Idle','r':'Run','j':'Jump','f':'Fall','d':'Dash','1':'Attack1','2':'Attack2','3':'Attack3'};
+  if(map[e.key]) playClip(map[e.key]);
+  if(e.key==='ArrowLeft')  spriteState.facingDir=-1;
+  if(e.key==='ArrowRight') spriteState.facingDir= 1;
 });
 
 // ── RESIZE ────────────────────────────────────────────────────────────────────

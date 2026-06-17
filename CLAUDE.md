@@ -83,9 +83,21 @@ Event catalogue: `PlayerDamagedEvent`, `PlayerDiedEvent`, `PlayerLeveledUpEvent`
 | Screen distortion | `ScreenDistortion_float` |
 
 ### Asset / Animation Reference
-`Assets/Art/AssetReference.md` — SotN sprite sheets catalogued (reference only; art ships 2.5D HDRP/WebGL).
-Maps player animation states → Animator clip-name contract + StateMachine (flags gaps: Walk, AirAttack,
-SubWeapon, Crouch, TurnAround, DragonKick, Climb), weapon/armor tier priority, enemy roster → zone/AI.
+`Assets/Art/AssetReference.md` — SotN sprite sheets catalogued; maps player animation states → Animator
+clip-name contract + StateMachine (flags gaps: Walk, AirAttack, SubWeapon, Crouch, TurnAround, DragonKick,
+Climb), weapon/armor tier priority, enemy roster → zone/AI.
+
+### Sprite-in-3D Pipeline
+SotN sprites run as atlas-sampled quads in HDRP 3D space. Drop PNG at `Assets/Art/Reference/SotN_SpriteSheet.png`.
+- `SpriteSheetDataSO.cs` — atlas layout SO (Columns, Rows, named SpriteClip[] with StartFrame/FrameCount/Fps/Loop)
+- `SpriteAnimator.cs` — drives `_BaseColorMap_ST` UV tiling+offset via MaterialPropertyBlock, zero-GC
+- `SpriteBillboard.cs` — LockY camera-facing quad for 2.5D
+- `PlayerSpriteController.cs` — FSM state → SpriteAnimator.Play() (maps "Idle"/"Run"/"Jump"/"Fall"/"Dash"/"WallSlide"/"Attack" → clip names)
+- `EnemySpriteController.cs` — EnemyBase state flags → clip names (Patrol/Flying/Ranged types)
+- `EnemyBase.cs` — added public IsDead, IsMoving, IsAttacking, FacingDir, IsChasing, IsDiving
+- `PlayerCombat.cs` — added public ComboIndex property
+- `Assets/Art/Reference/SETUP.md` — PNG import settings, SpriteSheetDataSO config, prefab wiring guide
+- `web-prototype/public/game-visual-demo.html` — SPRITE_SHEET_URL const + SPRITE_FRAG atlas sampler with analytic torch lighting; keyboard shortcuts i/r/j/f/d/1/2/3 cycle states, arrow keys flip facing
 
 ### Enemy Roster (17 enemies, data in `web-prototype/src/data/enemies.ts`)
 Zones: Entrance Hall → Catacombs → Cursed Library → Clocktower → Throne Room

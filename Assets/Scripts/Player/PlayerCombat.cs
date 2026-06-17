@@ -15,6 +15,7 @@ namespace MidnightReturn.Player
         [SerializeField] private WeaponDataSO _startingWeapon;
 
         public WeaponDataSO EquippedWeapon { get; private set; }
+        public int          ComboIndex     { get; private set; }
 
         private PlayerController  _player;
         private float             _pendingHitTime;
@@ -32,6 +33,7 @@ namespace MidnightReturn.Player
 
         public void QueueAttackHitbox(float normalizedDelay, int comboIndex)
         {
+            ComboIndex = comboIndex;
             if (_hitboxCoroutine != null) StopCoroutine(_hitboxCoroutine);
             _hitboxCoroutine = StartCoroutine(DelayedHitbox(normalizedDelay, comboIndex));
         }

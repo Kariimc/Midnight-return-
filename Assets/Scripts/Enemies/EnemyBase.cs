@@ -18,6 +18,14 @@ namespace MidnightReturn.Enemies
         public int Defense => Data != null ? Data.Defense : 0;
         public bool IsAlive => Hp > 0;
 
+        // Public state flags consumed by EnemySpriteController
+        public bool  IsDead     => _isDying;
+        public float FacingDir  => transform.localScale.x >= 0f ? 1f : -1f;
+        public bool  IsMoving   => _cc != null && _cc.velocity.sqrMagnitude > 0.01f;
+        public bool  IsAttacking => _attackCooldown > 0f;
+        public virtual bool IsChasing => false;
+        public virtual bool IsDiving  => false;
+
         protected Transform    _player;
         protected CharacterController _cc;
         protected Animator     _anim;
