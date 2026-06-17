@@ -152,6 +152,8 @@ namespace MidnightReturn.VerticalSlice
                             CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW) + 0.1f, 0f),
                 new Color(0.65f, 0.3f, 0.8f));
 
+            BuildBossTrigger();
+
             RepositionPlayer(Room2SpawnPoint);
 
             RenderSettings.ambientLight = new Color(0.04f, 0.03f, 0.07f); // darker
@@ -259,6 +261,69 @@ namespace MidnightReturn.VerticalSlice
             box.size = new Vector3(1f, yTop - yBottom, 1f);
 
             go.AddComponent<ClimbableVolume>();
+        }
+
+        private void BuildBossTrigger()
+        {
+            // Placed at column 37 on the right floor — fires once when player crosses
+            var go = new GameObject("BossTrigger_Room2");
+            float floorY  = CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW);
+            go.transform.position = new Vector3(
+                CatacombsContent.ColX(37),
+                floorY * 0.5f,
+                0f);
+            _room1Objects.Add(go);
+
+            var box = go.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(4f, floorY, 1f);
+
+            var trigger = go.AddComponent<BossTrigger>();
+            trigger.OnPlayerEntered = _ => SpawnDeathBoss();
+        }
+
+        private void SpawnDeathBoss()
+        {
+            var data = ScriptableObject.CreateInstance<Data.EnemyDataSO>();
+            data.EnemyId        = "death";
+            data.DisplayName    = "Death";
+            data.Zone           = Data.EnemyZone.Catacombs;
+            data.MaxHp          = 300;
+            data.Attack         = 25;
+            data.Defense        = 5;
+            data.ExpReward      = 500;
+            data.Behavior       = Data.AIBehavior.Boss;
+            data.MoveSpeed      = 4f;
+            data.DetectionRange = 50f;
+            data.AttackRange    = 1.8f;
+            data.AggroRange     = 50f;
+            data.AttackCooldown = 2.2f;
+            data.AttackWindup   = 0.35f;
+            data.DeathColor     = new Color(0.5f, 0f, 0.8f);
+
+            float floorY = CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW);
+            var pos = new Vector3(CatacombsContent.ColX(39), floorY + 0.1f, 0f);
+
+            var go = new GameObject("Boss_Death") { layer = _enemyLayer };
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            var cc = go.AddComponent<CharacterController>();
+            cc.height = 2.2f; cc.radius = 0.5f; cc.center = new Vector3(0f, 1.1f, 0f);
+
+            var vis = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            vis.name = "Visual";
+            vis.layer = _enemyLayer;
+            vis.transform.SetParent(go.transform, false);
+            vis.transform.localScale    = new Vector3(0.9f, 1.3f, 0.5f);
+            vis.transform.localPosition = new Vector3(0f, 1.1f, 0f);
+            if (vis.TryGetComponent<Collider>(out var vc)) Destroy(vc);
+            vis.GetComponent<MeshRenderer>().sharedMaterial = LitMaterial(new Color(0.08f, 0f, 0.12f));
+
+            var boss = go.AddComponent<DeathBoss>();
+            boss.Configure(data);
+
+            EventBus.Emit(new BossStartedEvent { BossId = "death" });
         }
 
         private void BuildExitDoor(Vector3 pos, float wallHeight)

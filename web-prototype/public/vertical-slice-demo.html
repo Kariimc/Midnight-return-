@@ -89,9 +89,9 @@ canvas{display:block;background:#08060f;}
 <div class="help">
   <span class="tag">← →</span> move &nbsp; <span class="tag">↑ ↓</span> climb ladder &nbsp;
   <span class="tag">Z / Space</span> jump &nbsp; <span class="tag">J</span> attack &nbsp;
-  <span class="tag">K</span> sub-weapon (10 MP) &nbsp; <span class="tag">E</span> save (at statue) &nbsp;
+  <span class="tag">K</span> sub-weapon (10 MP) &nbsp; <span class="tag">E</span> save (at statue) &nbsp; <span class="tag">X</span> air dash (after boss) &nbsp;
   <span class="tag">R</span> reset
-  <br><b>Goal:</b> clear the skeleton & zombie, leap the pit, climb to the save statue.
+  <br><b>Goal:</b> clear the skeleton & zombie → cross to Catacombs → defeat Death → unlock Air Dash.
 </div>
 
 <script>
@@ -162,6 +162,14 @@ let spawnCur={x:spawn.x,y:spawn.y};
 let ladderX0Cur=ladderX0, ladderX1Cur=ladderX1;
 let ladderTopCur=ladderTop, ladderBotCur=ladderBot;
 
+// ── Boss state ────────────────────────────────────────────────────────────────
+let boss = null;
+let bossTriggered = false;
+let airDashUnlocked = false;
+let airDashes = 0;         // remaining air dashes this airtime
+let airDashCd = 0;         // cooldown frames
+const BOSS_TRIGGER_X = 36 * S; // player crosses this x in Room 2 to spawn boss
+
 // ── Physics helpers ──────────────────────────────────────────────────────────
 function moveAxis(ent,dx,dy){
   // X
@@ -207,6 +215,7 @@ function reset(){
   document.getElementById('fade').style.opacity='0';
   P.x=spawn.x;P.y=spawn.y;P.vx=0;P.vy=0;P.hp=P.mhp;P.mp=P.mmp;P.iframes=0;P.climbing=false;
   resetEnemies();statue.used=false;statue._used=false;shots=[];particles=[];dust=[];
+  boss=null; bossTriggered=false; airDashUnlocked=false; airDashes=0; airDashCd=0;
 }
 
 // ── Room 2 (Catacombs) ───────────────────────────────────────────────────────
@@ -265,6 +274,7 @@ function startTransition(){
     ladderTopCur=-999;ladderBotCur=-998;
     P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;P.climbing=false;
     shots=[];particles=[];
+    bossTriggered=false; boss=null;
     const ban=document.getElementById('banner');
     ban.textContent='Catacombs — Shattered Hall';
     ban.classList.remove('show');
@@ -273,6 +283,272 @@ function startTransition(){
     fade.style.opacity='0';
     setTimeout(()=>{transitioning=false;},320);
   },320);
+}
+
+// ── Boss fight (Death) ────────────────────────────────────────────────────────
+function spawnBoss(){
+  boss={
+    x:38*S, y:R2.FLOOR_ROW*S-44,
+    w:22, h:44,
+    hp:300, mhp:300, atk:25,
+    phase:1, atkCd:72, atkPattern:0,
+    vx:0, vy:0, face:-1, grounded:false,
+    hitFlash:0, dead:0, dissolve:0,
+    attacking:false, atkType:null, atkT:0,
+    atkStart:{x:0,y:0},
+    transitioning:false, transT:0,
+    flash:0, flashCol:'rgba(110,0,160,0.5)',
+    _diveStartY:0, _diveEndY:0, _diveX:0,
+  };
+  // Boss intro flash
+  screenFlash('rgba(100,0,160,0.5)', 30);
+  shake=8;
+  toast('☠ DEATH HAS APPEARED');
+}
+
+let _screenFlashAlpha=0, _screenFlashCol='#fff', _screenFlashT=0;
+function screenFlash(col, frames){ _screenFlashCol=col; _screenFlashT=frames; _screenFlashAlpha=1; }
+
+function updateBoss(){
+  if(!boss||boss.dead)return;
+  if(boss.hitFlash>0)boss.hitFlash--;
+  if(boss.flash>0)boss.flash--;
+  if(airDashCd>0)airDashCd--;
+
+  // Phase 1 → 2 transition check
+  if(boss.phase===1 && !boss.transitioning && boss.hp<=boss.mhp*0.3){
+    boss.transitioning=true; boss.transT=90; boss.attacking=false;
+    screenFlash('rgba(110,0,160,0.55)',30); shake=10;
+    toast('☠ DEATH ASCENDS!');
+    return;
+  }
+  if(boss.transitioning){
+    boss.transT--;
+    if(boss.transT<=0){boss.transitioning=false;boss.phase=2;boss.atkCd=54;}
+    return;
+  }
+
+  if(boss.phase===1){
+    // Gravity
+    boss.vy = boss.grounded ? -1 : Math.min(boss.vy+0.5,12);
+    if(!boss.attacking){
+      const dx=(P.x+P.w/2)-(boss.x+boss.w/2);
+      boss.face=dx>0?1:-1;
+      const approach=Math.abs(dx)>boss.w*2.5?boss.face*2.2:0;
+      moveAxis(boss,approach,0); moveAxis(boss,0,boss.vy);
+      boss.atkCd--;
+      if(boss.atkCd<=0){
+        boss.atkCd=138;
+        boss.atkPattern=(boss.atkPattern+1)%2;
+        boss.atkType=boss.atkPattern===0?'sweep':'teleport';
+        boss.attacking=true; boss.atkT=0;
+        boss.atkStart={x:boss.x,y:boss.y};
+      }
+    } else updateBossAttack();
+  } else {
+    // Phase 2: float toward player+above
+    const tx=(P.x+P.w/2)-boss.face*50-boss.w/2;
+    const ty=(P.y+P.h/2)-70-boss.h/2;
+    boss.x+=(Math.max(S,Math.min(W-S-boss.w,tx))-boss.x)*0.035;
+    boss.y+=(Math.max(S,Math.min((R2.FLOOR_ROW-1)*S-boss.h,ty))-boss.y)*0.035;
+    boss.face=(P.x+P.w/2)>(boss.x+boss.w/2)?1:-1;
+    if(!boss.attacking){
+      boss.atkCd--;
+      if(boss.atkCd<=0){
+        boss.atkCd=102;
+        boss.atkPattern=(boss.atkPattern+1)%2;
+        boss.atkType=boss.atkPattern===0?'dive':'barrage';
+        boss.attacking=true; boss.atkT=0;
+        boss.atkStart={x:boss.x,y:boss.y};
+      }
+    } else updateBossAttack();
+  }
+
+  // Player attack hits boss
+  if(P.atk>6 && boss.hitFlash<=0){
+    const hb={x:P.face>0?P.x+P.w:P.x-30,y:P.y-2,w:30,h:P.h+4};
+    if(hb.x<boss.x+boss.w&&hb.x+hb.w>boss.x&&hb.y<boss.y+boss.h&&hb.y+hb.h>boss.y){
+      const dmg=Math.max(1,8+P.lv*3)+Math.floor(Math.random()*5);
+      boss.hp-=dmg; boss.hitFlash=8; hitstop=2; shake=4;
+      addParticles(boss.x+boss.w/2,boss.y+boss.h/2,'#aa88ff',10);
+      if(boss.hp<=0&&!boss.dead)killBoss();
+    }
+  }
+  // Sub-weapon hits boss
+  for(const s of shots){
+    if(!boss||boss.dead||boss.hitFlash>0)continue;
+    if(s.x>boss.x&&s.x<boss.x+boss.w&&s.y>boss.y&&s.y<boss.y+boss.h){
+      boss.hp-=14; boss.hitFlash=8; s.life=0;
+      addParticles(boss.x+boss.w/2,boss.y+boss.h/2,'#aa88ff',8);
+      if(boss.hp<=0&&!boss.dead)killBoss();
+    }
+  }
+  // Boss contact damage
+  if(!boss.attacking && P.x<boss.x+boss.w&&P.x+P.w>boss.x&&P.y<boss.y+boss.h&&P.y+P.h>boss.y){
+    hurtPlayer(boss.atk);
+  }
+}
+
+function updateBossAttack(){
+  boss.atkT++;
+  const t=boss.atkT;
+  switch(boss.atkType){
+    case 'sweep':
+      if(t>=20&&t<34){ boss.x+=boss.face*7; boss.x=Math.max(S,Math.min(W-S-boss.w,boss.x)); }
+      if(t===34){
+        const hbx=boss.face>0?boss.x+boss.w:boss.x-48;
+        if(P.x<hbx+48&&P.x+P.w>hbx&&P.y<boss.y+boss.h&&P.y+P.h>boss.y+10){hurtPlayer(boss.atk);shake=6;}
+        addParticles(boss.x+boss.w/2+boss.face*32,boss.y+boss.h/2,'#cc44ff',18);
+      }
+      if(t>40)boss.attacking=false;
+      break;
+    case 'teleport':
+      if(t===13){
+        const behindX=(P.x+P.w/2)+(boss.face>0?-1:1)*22;
+        boss.x=Math.max(S,Math.min(W-S-boss.w,behindX-boss.w/2));
+        boss.y=P.y; boss.vy=0;
+        boss.face=(P.x+P.w/2)>(boss.x+boss.w/2)?1:-1;
+        screenFlash('rgba(80,0,120,0.35)',10);
+        addParticles(boss.x+boss.w/2,boss.y+boss.h/2,'#8800cc',22);
+      }
+      if(t===21){
+        const hbx=boss.face>0?boss.x+boss.w:boss.x-44;
+        if(P.x<hbx+44&&P.x+P.w>hbx&&P.y<boss.y+boss.h&&P.y+P.h>boss.y){hurtPlayer(boss.atk);shake=6;}
+        addParticles(boss.x+boss.w/2+boss.face*28,boss.y+boss.h/2,'#cc44ff',16);
+      }
+      if(t>28)boss.attacking=false;
+      break;
+    case 'dive':
+      if(t<=17){
+        const pct=t/17;
+        boss.x=boss.atkStart.x+(P.x+P.w/2-boss.w/2-boss.atkStart.x)*pct;
+        boss.y=boss.atkStart.y+(P.y-110-boss.atkStart.y)*pct;
+        boss.x=Math.max(S,Math.min(W-S-boss.w,boss.x));
+        boss.y=Math.max(S,boss.y);
+      }
+      if(t===17){boss._diveStartY=boss.y; boss._diveEndY=P.y+P.h/2-boss.h/2;}
+      if(t>22&&t<=32){
+        const pct=(t-22)/10;
+        boss.y=boss._diveStartY+(boss._diveEndY-boss._diveStartY)*pct;
+      }
+      if(t===32){
+        const cx=boss.x+boss.w/2,cy=boss.y+boss.h;
+        if(Math.abs((P.x+P.w/2)-cx)<54&&Math.abs((P.y+P.h/2)-cy)<44){hurtPlayer(Math.floor(boss.atk*1.3));shake=8;}
+        addParticles(cx,cy,'#cc44ff',30); addParticles(cx-20,cy,'#aa00ff',12); addParticles(cx+20,cy,'#aa00ff',12);
+        shake=7;
+      }
+      if(t>39)boss.attacking=false;
+      break;
+    case 'barrage':
+      for(const [si,sf] of [[0,10],[1,30],[2,50]]){
+        if(t===sf){
+          const hbx=boss.face>0?boss.x+boss.w+si*6:boss.x-40-si*6;
+          if(P.x<hbx+40&&P.x+P.w>hbx&&P.y<boss.y+boss.h&&P.y+P.h>boss.y){hurtPlayer(Math.floor(boss.atk*0.7));shake=4;}
+          addParticles(boss.x+boss.w/2+boss.face*(26+si*10),boss.y+boss.h/2,'#8822cc',12);
+          screenFlash('rgba(50,0,80,0.22)',8);
+        }
+      }
+      if(t>62)boss.attacking=false;
+      break;
+  }
+}
+
+function killBoss(){
+  boss.dead=1; boss.attacking=false;
+  gainExp(500); shake=14;
+  addParticles(boss.x+boss.w/2,boss.y+boss.h/2,'#aa44ff',60);
+  addParticles(boss.x+boss.w/2,boss.y+boss.h/2,'#ffffff',30);
+  screenFlash('rgba(200,150,255,0.6)',50);
+  setTimeout(()=>{
+    airDashUnlocked=true; airDashes=1;
+    toast('✦ AIR DASH UNLOCKED — [X] mid-air!');
+  },1800);
+}
+
+function drawBoss(){
+  // Screen flash
+  if(_screenFlashT>0){
+    _screenFlashT--; _screenFlashAlpha=Math.max(0,_screenFlashT/30);
+    x.save(); x.globalAlpha=_screenFlashAlpha; x.fillStyle=_screenFlashCol; x.fillRect(0,0,W,H); x.restore();
+  }
+
+  if(!boss)return;
+
+  // Dissolve on death
+  if(boss.dead){
+    boss.dissolve=Math.min(1,boss.dissolve+0.012);
+    if(boss.dissolve>=1){boss=null;return;}
+    x.save(); x.globalAlpha=Math.max(0,1-boss.dissolve*2);
+    renderBossBody(); x.restore(); return;
+  }
+  renderBossBody();
+
+  // Boss HP bar (top center)
+  const bpct=Math.max(0,boss.hp/boss.mhp);
+  const bw2=200,bx2=(W-bw2)/2,by2=10;
+  x.fillStyle='rgba(0,0,0,0.8)'; x.fillRect(bx2-2,by2-2,bw2+4,18);
+  x.fillStyle=bpct>0.3?(boss.phase===2?'#6600aa':'#880033'):'#cc0055';
+  x.fillRect(bx2,by2,bw2*bpct,14);
+  x.strokeStyle='rgba(150,50,200,0.7)'; x.lineWidth=1; x.strokeRect(bx2,by2,bw2,14);
+  x.fillStyle='rgba(255,180,255,0.95)'; x.font='bold 8px monospace'; x.textAlign='center';
+  x.fillText(boss.phase===2?'☠ DEATH  [AERIAL]':'☠ DEATH',bx2+bw2/2,by2+11);
+  x.textAlign='left';
+  if(boss.transitioning){
+    x.globalAlpha=0.5+0.5*Math.sin(Date.now()/80);
+    x.fillStyle='#cc44ff'; x.font='bold 9px monospace'; x.textAlign='center';
+    x.fillText('PHASE TRANSITION',bx2+bw2/2,by2+30); x.textAlign='left'; x.globalAlpha=1;
+  }
+}
+
+function renderBossBody(){
+  if(!boss)return;
+  const bx=boss.x,by=boss.y,bw=boss.w,bh=boss.h;
+  const fl=boss.hitFlash>0;
+
+  x.save();
+  if(fl)x.globalAlpha=0.5;
+
+  // Shadow
+  x.fillStyle='rgba(80,0,120,0.4)'; x.fillRect(bx+2,by+bh,bw-4,7);
+
+  // Cloak body
+  const bg=x.createLinearGradient(bx,by,bx,by+bh);
+  bg.addColorStop(0,fl?'#ffffff':'#1a0020');
+  bg.addColorStop(0.4,fl?'#eeeeee':'#120018');
+  bg.addColorStop(1,fl?'#cccccc':'#0a000f');
+  x.fillStyle=bg; x.fillRect(bx,by,bw,bh);
+  if(!fl){
+    // Cloak trim
+    x.fillStyle='rgba(100,0,150,0.35)'; x.fillRect(bx,by,2,bh); x.fillRect(bx+bw-2,by,2,bh);
+    // Phase 2 ethereal shimmer
+    if(boss.phase===2){
+      x.globalAlpha=0.15;
+      x.fillStyle='#9922cc';
+      for(let i=0;i<4;i++) x.fillRect(bx+Math.random()*bw,by+Math.random()*bh,3,3);
+      x.globalAlpha=1;
+    }
+  }
+
+  // Scythe
+  const sx=boss.face>0?bx+bw:bx;
+  x.strokeStyle=fl?'#fff':'#99aabb'; x.lineWidth=2;
+  x.beginPath(); x.moveTo(sx,by+bh*0.25); x.lineTo(sx+boss.face*18,by+bh*0.88); x.stroke();
+  x.fillStyle=fl?'#fff':'rgba(160,210,255,0.85)';
+  x.beginPath();
+  x.moveTo(sx+boss.face*18,by+bh*0.88);
+  x.quadraticCurveTo(sx+boss.face*32,by+bh*0.38,sx,by+bh*0.58);
+  x.fill();
+
+  // Eyes
+  x.shadowColor='rgba(150,0,255,0.9)'; x.shadowBlur=10;
+  x.fillStyle=fl?'#ffaaff':'#dd44ff';
+  const ex0=boss.face>0?bx+bw-8:bx+2;
+  const ex1=boss.face>0?bx+bw-3:bx+7;
+  x.beginPath(); x.arc(ex0,by+6,2.5,0,7); x.fill();
+  x.beginPath(); x.arc(ex1,by+6,2.5,0,7); x.fill();
+  x.shadowBlur=0;
+
+  x.restore();
 }
 
 // ── Particle system ──────────────────────────────────────────────────────────
@@ -454,6 +730,13 @@ function update(){
     if(P.jumpHeld){P.jumpT--; if(!jp||P.jumpT<=0){if(P.vy<0)P.vy*=0.5;P.jumpHeld=false;}}
     P.vy=Math.min(P.vy+0.45,9); // gravity / terminal
     moveAxis(P,P.vx,0); moveAxis(P,0,P.vy);
+    // Air dash [X]
+    if(airDashUnlocked && K['x'] && !P.grounded && airDashes>0 && airDashCd<=0){
+      P.vx=P.face*9; P.vy=-1; airDashes=0; airDashCd=30;
+      addParticles(P.x+P.w/2,P.y+P.h/2,'#8844ff',14);
+    }
+    // Restore air dash on landing
+    if(P.grounded && airDashUnlocked && airDashes===0) airDashes=1;
   }
 
   // fell in pit
@@ -516,6 +799,14 @@ function update(){
     if(P.x+P.w>=doorX)startTransition();
   }
 
+  // Boss spawn trigger (Room 2)
+  if(currentRoom===2 && !bossTriggered && !boss && P.x+P.w>=BOSS_TRIGGER_X){
+    bossTriggered=true;
+    spawnBoss();
+  }
+  // Boss update
+  updateBoss();
+
   // statue (Room 1 only)
   if(currentRoom===1){
     const sd=Math.hypot((P.x+P.w/2)-(statue.x+10),(P.y+P.h/2)-(statue.y+14));
@@ -572,25 +863,27 @@ function draw(){
   x.restore();
 
   // ── LAYER 2: Ladder (iron-look) ─────────────────────────────────────────
-  // Rails
-  x.save();
-  x.shadowColor='rgba(180,130,60,0.4)'; x.shadowBlur=3;
-  const railGrad=x.createLinearGradient(ladderX0,0,ladderX1,0);
-  railGrad.addColorStop(0,'#7a5820');railGrad.addColorStop(0.5,'#c9993a');railGrad.addColorStop(1,'#5a3c10');
-  x.strokeStyle=railGrad; x.lineWidth=3;
-  x.beginPath();x.moveTo(ladderX0+5,ladderTop);x.lineTo(ladderX0+5,ladderBot);x.stroke();
-  x.beginPath();x.moveTo(ladderX1-5,ladderTop);x.lineTo(ladderX1-5,ladderBot);x.stroke();
-  x.shadowBlur=0;
-  // Rungs
-  for(let yy=ladderTop+8;yy<ladderBot;yy+=12){
-    x.strokeStyle='#a07830'; x.lineWidth=2;
-    x.beginPath();x.moveTo(ladderX0+5,yy);x.lineTo(ladderX1-5,yy);x.stroke();
-    // Rivet dots
-    x.fillStyle='#c9993a';
-    x.beginPath();x.arc(ladderX0+5,yy,2,0,7);x.fill();
-    x.beginPath();x.arc(ladderX1-5,yy,2,0,7);x.fill();
+  // Only draw if ladder is in current room (ladderX0Cur=-999 means none)
+  if(ladderX0Cur>-900){
+    x.save();
+    x.shadowColor='rgba(180,130,60,0.4)'; x.shadowBlur=3;
+    const railGrad=x.createLinearGradient(ladderX0Cur,0,ladderX1Cur,0);
+    railGrad.addColorStop(0,'#7a5820');railGrad.addColorStop(0.5,'#c9993a');railGrad.addColorStop(1,'#5a3c10');
+    x.strokeStyle=railGrad; x.lineWidth=3;
+    x.beginPath();x.moveTo(ladderX0Cur+5,ladderTopCur);x.lineTo(ladderX0Cur+5,ladderBotCur);x.stroke();
+    x.beginPath();x.moveTo(ladderX1Cur-5,ladderTopCur);x.lineTo(ladderX1Cur-5,ladderBotCur);x.stroke();
+    x.shadowBlur=0;
+    // Rungs
+    for(let yy=ladderTopCur+8;yy<ladderBotCur;yy+=12){
+      x.strokeStyle='#a07830'; x.lineWidth=2;
+      x.beginPath();x.moveTo(ladderX0Cur+5,yy);x.lineTo(ladderX1Cur-5,yy);x.stroke();
+      // Rivet dots
+      x.fillStyle='#c9993a';
+      x.beginPath();x.arc(ladderX0Cur+5,yy,2,0,7);x.fill();
+      x.beginPath();x.arc(ladderX1Cur-5,yy,2,0,7);x.fill();
+    }
+    x.restore();
   }
-  x.restore();
 
   // ── LAYER 3: Stone tiles (textured) ─────────────────────────────────────
   for(let r=0;r<ROWS;r++){
@@ -603,6 +896,39 @@ function draw(){
         x.fillStyle='rgba(255,255,255,0.12)';
         x.fillRect(c*S, r*S, S, 2);
       }
+    }
+  }
+
+  // Exit door (Room 1 only)
+  if(currentRoom===1){
+    const doorX=(COLS-1)*S-2;
+    const doorH=FLOOR_ROW*S;
+    x.fillStyle=doorUnlocked?'rgba(200,160,40,0.35)':'rgba(140,20,20,0.4)';
+    x.fillRect(doorX,0,4,doorH);
+    if(doorUnlocked){
+      x.save();
+      x.shadowColor='rgba(220,180,60,0.8)';x.shadowBlur=10;
+      x.strokeStyle='#c8a030';x.lineWidth=1.5;
+      x.strokeRect(doorX-1,0,6,doorH);
+      x.shadowBlur=0;x.restore();
+      x.fillStyle='rgba(255,220,100,0.9)';x.font='bold 9px monospace';
+      x.fillText('EXIT →',doorX-26,doorH/2);
+    }
+  }
+
+  // Room 2 stalactite decorative tips
+  if(currentRoom===2){
+    for(const sx of [R2.STALA1,R2.STALA1+1,R2.STALA2,R2.STALA2+1]){
+      const stalaBottomRow=grid[5][sx]===1?5:grid[4][sx]===1?4:grid[3][sx]===1?3:0;
+      if(stalaBottomRow===0)continue;
+      const sy=stalaBottomRow*S+S;
+      const gg=x.createLinearGradient(0,sy-S,0,sy+8);
+      gg.addColorStop(0,'rgba(30,24,44,0)');
+      gg.addColorStop(1,'rgba(30,24,44,0.9)');
+      x.fillStyle=gg;x.fillRect(sx*S,sy-S,S*2,S+8);
+      // Drip point
+      x.fillStyle='#1e1830';
+      x.beginPath();x.moveTo(sx*S+S-3,sy);x.lineTo(sx*S+S,sy+8);x.lineTo(sx*S+S+3,sy);x.fill();
     }
   }
 
@@ -702,6 +1028,7 @@ function draw(){
     }
     x.restore();
   }
+  drawBoss();
 
   // ── LAYER 8: Player ─────────────────────────────────────────────────────
   x.save();
