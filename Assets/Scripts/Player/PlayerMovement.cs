@@ -35,6 +35,9 @@ namespace MidnightReturn.Player
         [SerializeField] float WallJumpVY     = 16f;
         [SerializeField] float WallSlideSpeed = 2.5f;
 
+        [Header("Climb")]
+        [SerializeField] float ClimbSpeed     = 4.5f;
+
         [Header("Abilities (unlockable)")]
         public bool CanDoubleJump  = false;
         public bool CanWallJump    = true;
@@ -49,6 +52,10 @@ namespace MidnightReturn.Player
         public int     WallDir       { get; private set; }
         public bool    IsDashing     { get; private set; }
         public bool    IsWallSliding { get; private set; }
+        public bool    IsClimbing    { get; private set; }
+        public bool    CanClimb      { get; private set; }
+        public bool    AtLadderTop   { get; private set; }
+        public bool    AtLadderBottom{ get; private set; }
 
         // ── Private state ──────────────────────────────────────────────────────
         private CharacterController _cc;
@@ -93,12 +100,47 @@ namespace MidnightReturn.Player
             Velocity = new Vector2(vx, vy);
         }
 
+        // ── Climbing (ladders / chains) ───────────────────────────────────────
+        private float _ladderX, _ladderTop, _ladderBottom;
+
+        // Called by ClimbableVolume trigger enter/exit.
+        public void SetClimbable(bool can, float ladderX, float top, float bottom)
+        {
+            CanClimb = can;
+            if (can) { _ladderX = ladderX; _ladderTop = top; _ladderBottom = bottom; }
+        }
+
+        public void SetClimbing(bool climbing)
+        {
+            IsClimbing = climbing;
+            if (climbing) Velocity = Vector2.zero;
+        }
+
+        private void TickClimb(float dt, PlayerInputHandler input)
+        {
+            float vy = input.MoveAxis.y * ClimbSpeed;
+
+            // Snap horizontally onto the ladder centerline
+            float nx = Mathf.MoveTowards(transform.position.x, _ladderX, 20f * dt);
+            Vector3 target = new Vector3(nx, transform.position.y + vy * dt, 0f);
+            _cc.Move(target - transform.position);
+
+            // Clamp to ladder vertical bounds, lock Z
+            float cy = Mathf.Clamp(transform.position.y, _ladderBottom, _ladderTop);
+            transform.position = new Vector3(transform.position.x, cy, 0f);
+
+            Velocity        = new Vector2(0f, vy);
+            AtLadderTop     = cy >= _ladderTop - 0.05f;
+            AtLadderBottom  = cy <= _ladderBottom + 0.05f;
+        }
+
         public void Tick(float dt, PlayerInputHandler input)
         {
             SyncGroundState();
             UpdateTimers(dt);
 
-            if (IsDashing) { TickDash(dt); return; }
+            if (IsClimbing) { TickClimb(dt, input); return; }
+            if (IsDashing)  { TickDash(dt); return; }
 
             TickWall(dt, input);
             TickJump(dt, input);

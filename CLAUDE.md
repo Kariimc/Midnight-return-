@@ -172,4 +172,17 @@ Level-up: random stat growth with variance, full HP/MP restore
   - EventBus.cs — MusicZoneChangedEvent, CombatIntensityEvent, MusicStateChangedEvent
   - Assets/Settings/AudioMixerSetup.md — mixer groups, exposed params, snapshots, reverb, stem authoring rules
   - web-prototype/public/audio-mixer-demo.html — live Web Audio mirror: synthesized per-zone stems, intensity meter, adaptive combat layer, boss override, bus faders (keys 1–5 zones, A/H/K events, B boss)
-- [ ] Phase 7: Level art pipeline — tile system, parallax, HDRP lighting per zone
+- [x] Phase 7: Level art pipeline — tile system, parallax, HDRP lighting per zone, Climb
+  - TileSetSO.cs — atlas palette: columns/rows, tile world size, sparse solid-index set, GetUV() with seam padding
+  - TilemapLayerSO.cs — authored grid (row-major, -1 empty), ZDepth per layer, BuildColliders flag
+  - TileChunkBuilder.cs — bakes a layer into ONE combined mesh (1 draw call), merged horizontal-run box colliders, UInt32 index for >65k verts
+  - ParallaxLayer.cs — self-driving fractional camera-travel parallax, auto-scroll, seamless horizontal wrap
+  - ZoneLightingSO.cs — per-zone HDRP mood: ambient, key/fill light color+intensity+angle, fog (density→meanFreePath), bloom/vignette/color-grade/exposure
+  - ZoneLightingController.cs — on RoomTransitionCompleteEvent lerps lights + HDRP Volume overrides (Fog/Bloom/Vignette/ColorAdjustments/Exposure via TryGet); ApplyImmediate() for boot
+  - ClimbableVolume.cs — trigger feeding PlayerMovement.SetClimbable (centerline + vertical bounds)
+  - ClimbState.cs — ladder climb; gravity off, MoveAxis.y vertical, X snap, anim freeze when idle; jump-off / over-top / bottom dismount
+  - PlayerMovement.cs — SetClimbable/SetClimbing/TickClimb + CanClimb/IsClimbing/AtLadderTop/AtLadderBottom; climb branch in Tick
+  - PlayerController.cs — ClimbState registered; Idle/Run/Jump/Fall route into Climb (Up to mount; Down at top)
+  - Assets/Settings/LevelArtSetup.md — tile/parallax/lighting/climb wiring guide
+  - web-prototype/public/level-art-demo.html — Three.js: 5 parallax depths, shader-tiled ground+wall, torch bloom, live per-zone lighting (keys ◂▸ pan, Space auto, 1–5 zones)
+  - All 15 player animation states now complete (Climb was the last gap)

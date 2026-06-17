@@ -72,7 +72,8 @@ namespace MidnightReturn.Player
                .Add(new AirAttackState(this))
                .Add(new SubWeaponState(this))
                .Add(new CrouchState(this))
-               .Add(new DragonKickState(this));
+               .Add(new DragonKickState(this))
+               .Add(new ClimbState(this));
             FSM.Transition("Idle");
         }
 

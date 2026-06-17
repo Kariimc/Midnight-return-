@@ -16,6 +16,8 @@ namespace MidnightReturn.Player.States
             if (Movement.IsGrounded)      { Player.FSM.Transition("Idle");       return; }
             if (Input.HasDash)             { Player.FSM.Transition("Dash");       return; }
             if (Input.HasSpell)            { Player.FSM.Transition("SubWeapon");  return; }
+            if (Movement.CanClimb && (Input.IsPressingUp || Input.IsPressingDown))
+                { Player.FSM.Transition("Climb"); return; }
             if (Movement.Velocity.y < -1f) { Player.FSM.Transition("Fall");       return; }
 
             // Down+Attack → DragonKick dive

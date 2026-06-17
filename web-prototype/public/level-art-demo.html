@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Midnight Return — Level Art</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'Cinzel',serif}
+#c{position:fixed;inset:0;width:100%;height:100%}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+.title{position:absolute;top:16px;left:50%;transform:translateX(-50%);text-align:center}
+.title h1{font-size:15px;letter-spacing:6px;color:#b49434;text-transform:uppercase;
+  text-shadow:0 0 20px rgba(180,148,52,.4)}
+.title .sub{font-size:8px;letter-spacing:4px;color:#7a6840;margin-top:5px;text-transform:uppercase}
+#zones{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto}
+.zbtn{padding:9px 14px;border:1px solid rgba(180,148,52,.2);background:rgba(12,8,20,.7);
+  color:#7a6840;letter-spacing:2px;font-size:9px;text-transform:uppercase;cursor:pointer;
+  border-radius:3px;transition:.2s;font-family:'Cinzel',serif;backdrop-filter:blur(4px)}
+.zbtn:hover{border-color:#7a6840;color:#c8bca0}
+.zbtn.active{border-color:#b49434;color:#b49434;background:rgba(180,148,52,.12);
+  box-shadow:0 0 18px rgba(180,148,52,.2)}
+#info{position:absolute;top:14px;left:18px;font-size:8px;letter-spacing:2px;color:rgba(120,100,60,.5);
+  line-height:1.9;text-transform:uppercase}
+#hint{position:absolute;bottom:22px;right:20px;font-size:8px;letter-spacing:3px;color:rgba(100,84,50,.4)}
+.legend{position:absolute;top:14px;right:18px;font-size:7px;letter-spacing:1px;color:rgba(120,100,60,.45);
+  line-height:1.8;text-align:right}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div class="title"><h1 id="zone-name">Cursed Library</h1><div class="sub">Level Art · Parallax · Zone Lighting</div></div>
+  <div id="info"></div>
+  <div class="legend">
+    Parallax layers<br>
+    ▸ sky / moon &nbsp; f=0.95<br>
+    ▸ far spires &nbsp;&nbsp; f=0.75<br>
+    ▸ towers &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; f=0.50<br>
+    ▸ pillars &nbsp;&nbsp;&nbsp;&nbsp; f=0.22<br>
+    ▸ tiles (world) f=0.00
+  </div>
+  <div id="zones"></div>
+  <div id="hint">◂ ▸ PAN · SPACE AUTO</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass }      from 'three/addons/postprocessing/ShaderPass.js';
+
+// ── Zone lighting presets (mirror ZoneLightingSO) ──────────────────────────
+const ZONES = {
+  EntranceHall:  { name:'Entrance Hall',  fog:'#0a0814', fogD:0.030, amb:'#1a1626', key:'#8a86b0', keyI:1.1, bloom:0.7, tile:'#2a2436', accent:'#b49434' },
+  Catacombs:     { name:'Catacombs',      fog:'#06080a', fogD:0.058, amb:'#0e1410', key:'#4a6a5a', keyI:0.7, bloom:0.5, tile:'#1a221c', accent:'#5a8a6a' },
+  CursedLibrary: { name:'Cursed Library', fog:'#0a0612', fogD:0.040, amb:'#161024', key:'#6a5a9a', keyI:0.9, bloom:0.9, tile:'#241c34', accent:'#8a6ad2' },
+  Clocktower:    { name:'Clocktower',     fog:'#0c0a06', fogD:0.026, amb:'#1c1810', key:'#b49a5a', keyI:1.3, bloom:1.1, tile:'#2c2616', accent:'#d4a830' },
+  ThroneRoom:    { name:'Throne Room',    fog:'#0a0408', fogD:0.044, amb:'#1a0c12', key:'#a23a4a', keyI:1.0, bloom:1.3, tile:'#2a1018', accent:'#d2405a' },
+};
+const ZK = Object.keys(ZONES);
+let curZone = 'CursedLibrary';
+
+// ── Renderer / scene ───────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene  = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0612, 0.040);
+scene.background = new THREE.Color(0x06040c);
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 1.5, 14);
+camera.lookAt(0, 1.5, 0);
+
+// ── Lights ─────────────────────────────────────────────────────────────────
+const amb = new THREE.AmbientLight(0x161024, 1.1);
+scene.add(amb);
+const key = new THREE.DirectionalLight(0x6a5a9a, 0.9);
+key.position.set(-5, 9, 6); scene.add(key);
+const moonGlow = new THREE.PointLight(0x6a78b0, 2.0, 60, 1.6);
+moonGlow.position.set(8, 12, -28); scene.add(moonGlow);
+
+// ── Procedural gothic skyline texture (one parallax layer) ─────────────────
+function skylineTex(color, density, seed){
+  const W=1024, H=512, cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const x=cv.getContext('2d');
+  let s=seed*9301;
+  const rnd=()=>{ s=(s*9301+49297)%233280; return s/233280; };
+  x.clearRect(0,0,W,H);
+  x.fillStyle=color;
+  const n=Math.floor(density*18);
+  for(let i=0;i<n;i++){
+    const bw=40+rnd()*120, bx=rnd()*W, bh=120+rnd()*300;
+    x.fillRect(bx,H-bh,bw,bh);
+    // spire
+    x.beginPath();
+    x.moveTo(bx,H-bh); x.lineTo(bx+bw/2,H-bh-50-rnd()*70); x.lineTo(bx+bw,H-bh);
+    x.closePath(); x.fill();
+    // windows (faint glow)
+    if(rnd()>0.4){
+      x.fillStyle='rgba(180,148,52,0.10)';
+      for(let w=0;w<3;w++){ x.fillRect(bx+bw*0.3, H-bh+30+w*40, bw*0.12, 16); }
+      x.fillStyle=color;
+    }
+  }
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+
+// ── Parallax layers ────────────────────────────────────────────────────────
+const layers = [];
+function addLayer(z, factor, color, density, seed, scaleY){
+  const tex = skylineTex(color, density, seed);
+  const w = 60, h = w*(512/1024)*scaleY;
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, h),
+    new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false, fog:true})
+  );
+  m.position.set(0, h/2 - 2.5, z);
+  m.userData.factor = factor;
+  m.userData.baseX  = 0;
+  scene.add(m); layers.push(m);
+  return m;
+}
+// far → near
+addLayer(-30, 0.95, '#0e0a1a', 0.5, 3, 1.5);  // distant spires
+addLayer(-20, 0.75, '#120c20', 0.8, 7, 1.25); // far towers
+addLayer(-12, 0.50, '#160e26', 1.0, 13, 1.0); // mid towers
+addLayer(-6,  0.22, '#0c0816', 1.2, 21, 0.8); // near pillars
+
+// Moon (far, catches bloom)
+const moon = new THREE.Mesh(new THREE.SphereGeometry(2.4, 24, 24),
+  new THREE.MeshBasicMaterial({color:0xb0b8e0}));
+moon.position.set(10, 13, -34); scene.add(moon);
+moon.userData.factor = 0.98; moon.userData.baseX = 10;
+layers.push(moon);
+
+// ── Tiled ground (world-locked, factor 0) — procedural tile shader ──────────
+const TILE_VERT = `varying vec2 vUv; varying vec3 vW;
+void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz;
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
+const TILE_FRAG = `varying vec2 vUv; varying vec3 vW;
+uniform vec3 tileCol; uniform vec3 fogCol; uniform float fogD;
+float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+void main(){
+  vec2 uv=vUv*vec2(30.,8.);
+  vec2 i=floor(uv), f=fract(uv);
+  float c=h(i);
+  float b=clamp(min(min(f.x,1.-f.x),min(f.y,1.-f.y))*7.,0.,1.);
+  vec3 stone=tileCol*(0.7+c*0.5);
+  vec3 mort=tileCol*0.25;
+  vec3 col=mix(mort,stone,smoothstep(0.,0.3,b));
+  col*=0.4+0.6*smoothstep(0.,0.5,b);
+  // distance fog (exp2)
+  float d=length(vW-cameraPosition);
+  float fog=1.-exp(-fogD*fogD*d*d);
+  col=mix(col,fogCol,clamp(fog,0.,1.));
+  gl_FragColor=vec4(col,1.);}`;
+
+const tileMat = new THREE.ShaderMaterial({
+  uniforms:{ tileCol:{value:new THREE.Color(0x241c34)}, fogCol:{value:new THREE.Color(0x0a0612)}, fogD:{value:0.04} },
+  vertexShader:TILE_VERT, fragmentShader:TILE_FRAG
+});
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), tileMat);
+ground.rotation.x = -Math.PI/2; ground.position.set(0, -2.5, -4); scene.add(ground);
+
+// Back wall (same tile shader, brick scale)
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(120, 24), tileMat.clone());
+wall.position.set(0, 6, -10); scene.add(wall);
+
+// Foreground pillars (world-locked gameplay-plane props)
+const pillarMat = new THREE.MeshStandardMaterial({color:0x18121f, roughness:0.85, metalness:0.1});
+for(let i=-2;i<=2;i++){
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.6,9,8), pillarMat);
+  p.position.set(i*9, 2, -2); scene.add(p);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,1.6), pillarMat);
+  cap.position.set(i*9, 6.6, -2); scene.add(cap);
+}
+
+// Torches on pillars (bloom anchors)
+const torches=[];
+for(let i=-2;i<=2;i++){
+  const fl = new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),
+    new THREE.MeshBasicMaterial({color:0xff7030}));
+  fl.position.set(i*9+0.7, 3.5, -1.4); scene.add(fl);
+  const li = new THREE.PointLight(0xff6518, 3, 12, 2); li.position.copy(fl.position); scene.add(li);
+  torches.push({fl, li, base:3});
+}
+
+// ── Post ───────────────────────────────────────────────────────────────────
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.9, 0.6, 0.3);
+composer.addPass(bloom);
+const VIG = new ShaderPass({
+  uniforms:{tDiffuse:{value:null}, t:{value:0}},
+  vertexShader:`varying vec2 v; void main(){v=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`uniform sampler2D tDiffuse; uniform float t; varying vec2 v;
+  void main(){ vec2 c=v-0.5; vec3 col=texture2D(tDiffuse,v).rgb;
+    col*=pow(max(0.,1.-dot(c,c)*1.5),1.3);
+    float g=fract(sin(dot(v+fract(t*0.06),vec2(12.99,78.23)))*43758.5);
+    col+=(g-0.5)*0.02; gl_FragColor=vec4(col,1.);}`
+});
+composer.addPass(VIG);
+
+// ── Zone application (lerp via GSAP) ───────────────────────────────────────
+function applyZone(key, instant){
+  const z = ZONES[key]; curZone = key;
+  document.getElementById('zone-name').textContent = z.name;
+  document.querySelectorAll('.zbtn').forEach(b=>b.classList.toggle('active', b.dataset.z===key));
+  document.getElementById('zone-name').style.color = z.accent;
+
+  const dur = instant ? 0 : 1.4;
+  const fogC = new THREE.Color(z.fog), ambC = new THREE.Color(z.amb),
+        keyC = new THREE.Color(z.key), tileC = new THREE.Color(z.tile);
+
+  gsap.to(scene.fog.color, {r:fogC.r, g:fogC.g, b:fogC.b, duration:dur});
+  gsap.to(scene.background,{r:fogC.r*0.6, g:fogC.g*0.6, b:fogC.b*0.7, duration:dur});
+  gsap.to(scene.fog, {density:z.fogD, duration:dur});
+  gsap.to(amb.color, {r:ambC.r, g:ambC.g, b:ambC.b, duration:dur});
+  gsap.to(amb, {intensity: 0.9, duration:dur});
+  gsap.to(key.color, {r:keyC.r, g:keyC.g, b:keyC.b, duration:dur});
+  gsap.to(key, {intensity:z.keyI, duration:dur});
+  gsap.to(bloom, {strength:z.bloom, duration:dur});
+  gsap.to(tileMat.uniforms.tileCol.value, {r:tileC.r, g:tileC.g, b:tileC.b, duration:dur});
+  gsap.to(tileMat.uniforms.fogCol.value,  {r:fogC.r, g:fogC.g, b:fogC.b, duration:dur});
+  gsap.to(tileMat.uniforms.fogD, {value:z.fogD*1.4, duration:dur});
+  gsap.to(wall.material.uniforms.tileCol.value, {r:tileC.r*0.8, g:tileC.g*0.8, b:tileC.b*0.8, duration:dur});
+  gsap.to(wall.material.uniforms.fogCol.value,  {r:fogC.r, g:fogC.g, b:fogC.b, duration:dur});
+  gsap.to(wall.material.uniforms.fogD, {value:z.fogD*1.4, duration:dur});
+}
+
+// ── Camera pan + parallax ──────────────────────────────────────────────────
+let camX = 0, panDir = 0, autoPan = false, autoT = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const t = performance.now()*0.001;
+
+  if(autoPan) camX = Math.sin(t*0.18)*16;
+  else camX += panDir * 0.22;
+  camX = Math.max(-26, Math.min(26, camX));
+  camera.position.x = camX;
+  camera.lookAt(camX*0.6, 1.5, 0);
+
+  // Parallax — each layer offset by camera × (1 - factor) inverse: far moves least
+  layers.forEach(L=>{
+    L.position.x = L.userData.baseX + camX * (1 - L.userData.factor);
+  });
+
+  // Torch flicker
+  torches.forEach((tr,i)=>{
+    const f = 1 + Math.sin(t*7+i)*0.2 + Math.sin(t*13+i)*0.08;
+    tr.li.intensity = tr.base*f;
+    tr.fl.scale.setScalar(0.8+f*0.3);
+  });
+
+  VIG.uniforms.t.value = t;
+  composer.render();
+}
+
+// ── UI ─────────────────────────────────────────────────────────────────────
+const zc = document.getElementById('zones');
+ZK.forEach(k=>{
+  const b=document.createElement('button');
+  b.className='zbtn'+(k===curZone?' active':''); b.dataset.z=k;
+  b.textContent=ZONES[k].name; b.onclick=()=>applyZone(k);
+  zc.appendChild(b);
+});
+document.getElementById('info').innerHTML =
+  '5 parallax depths<br>shader-tiled ground + wall<br>per-zone fog · light · bloom<br>5 zones — click below';
+
+addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft')  panDir=-1;
+  if(e.key==='ArrowRight') panDir= 1;
+  if(e.key===' ') { autoPan=!autoPan; e.preventDefault(); }
+  const n=parseInt(e.key); if(n>=1&&n<=5) applyZone(ZK[n-1]);
+});
+addEventListener('keyup', e=>{ if(e.key==='ArrowLeft'||e.key==='ArrowRight') panDir=0; });
+
+addEventListener('resize', ()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight);
+  bloom.resolution.set(innerWidth,innerHeight);
+});
+
+applyZone('CursedLibrary', true);
+animate();
+</script>
+</body>
+</html>

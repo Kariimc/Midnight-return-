@@ -26,7 +26,7 @@ Source sheet (col. 3) → our `Animator` clip name → `StateMachine<PlayerState
 |11 | Crouching               | `Crouch`           | `CrouchState`         | ✅ done | CC height ×0.55, center adjusted; crouch-attack via Attack1 |
 |12 | Turning around          | `TurnAround`       | `TurnAroundState`     | ✅ done | 0.08s cosmetic pivot; fires from Idle/Run on direction flip |
 |13 | Dragon Kick (down+atk)  | `DragonKick`       | `DragonKickState`     | ✅ done | Down+Attack airborne; dive velocity 26u/s; AOE burst on land |
-|14 | Climbing (ladder/chain) | `Climb`            | —                     | ⬜ gap  | needs ClimbState + climbable trigger volumes (Phase 7 or later) |
+|14 | Climbing (ladder/chain) | `Climb`            | `ClimbState`          | ✅ done | ClimbableVolume trigger + PlayerMovement.TickClimb vertical override (Phase 7) |
 |15 | Death                   | `Death`            | (locked FSM)          | ✅ done | dissolve via VFXManager |
 
 **Canonical clip-name contract** — the Animator Controller must expose exactly these state names
@@ -34,8 +34,8 @@ Source sheet (col. 3) → our `Animator` clip name → `StateMachine<PlayerState
 `Idle, Walk, Run, Jump, Fall, Dash, WallSlide, Attack1, Attack2, Attack3, AirAttack,
 SubWeapon, Crouch, TurnAround, DragonKick, Climb, Death`
 
-**Only remaining gap:** Climb — needs a climbable-volume trigger system and vertical movement
-override in PlayerMovement. Deferred to Phase 7 (level art pipeline).
+**All 15 player animation states implemented.** Climb closed in Phase 7 with the
+ClimbableVolume trigger system + vertical movement override in PlayerMovement.
 
 ---
 

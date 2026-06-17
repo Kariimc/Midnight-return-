@@ -23,6 +23,7 @@ namespace MidnightReturn.Player.States
             if (Input.HasSpell)                                    { Player.FSM.Transition("SubWeapon");  return; }
             if (Input.HasJump)                                     { Player.FSM.Transition("Jump");       return; }
             if (Input.HasDash)                                     { Player.FSM.Transition("Dash");       return; }
+            if (Movement.CanClimb && Input.IsPressingUp)           { Player.FSM.Transition("Climb");      return; }
             if (Input.IsPressingDown)                              { Player.FSM.Transition("Crouch");     return; }
             if (!Input.IsPressingLeft && !Input.IsPressingRight)   { Player.FSM.Transition("Idle");       return; }
 
