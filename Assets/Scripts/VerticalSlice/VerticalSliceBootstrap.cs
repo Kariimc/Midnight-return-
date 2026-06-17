@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using MidnightReturn.Data;
 using MidnightReturn.Level;
@@ -9,20 +10,21 @@ using MidnightReturn.Utils;
 namespace MidnightReturn.VerticalSlice
 {
     // ══════════════════════════════════════════════════════════════════════════
-    //  VerticalSliceBootstrap — assembles the first playable room in code.
+    //  VerticalSliceBootstrap — assembles two playable rooms in code.
     //
-    //  Drop this on one empty GameObject (at world origin) in a scene that also
-    //  contains a Player (tagged "Player") and a GameManager. On Start it:
-    //    1. bakes the tilemap (background + collidable main) into combined meshes
-    //    2. spawns two patrolling enemies on the configured enemy layer
-    //    3. places a save statue on the high platform
-    //    4. drops a climbable ladder from the floor to that platform
-    //    5. repositions the player at the room entrance
-    //    6. emits ONE RoomTransitionCompleteEvent
+    //  Room 1: Entrance Hall — Threshold
+    //    • 44×16 stone corridor, ceiling, walls, pit, ledge, platform, ladder
+    //    • Zombie on ledge + Skeleton on floor
+    //    • Kill both → exit door unlocks (ProceduralRoomTransition)
+    //    • Exit → 0.3s fade to black → Room 2 swap → fade in + room banner
     //
-    //  Step 6 is the integration proof: MusicDirector and ZoneLightingController
-    //  (if present in the scene with authored catalogues) react to that single
-    //  event with zero direct wiring from this bootstrap.
+    //  Room 2: Catacombs — Shattered Hall
+    //    • Open eerie cavern, same 44×16 grid
+    //    • Three cascading platforms over a massive central void
+    //    • Two placeholder enemies (Shade, Wraith) — roster TBD
+    //
+    //  RoomTransitionCompleteEvent is emitted for EACH room; MusicDirector and
+    //  ZoneLightingController (if present) react with zero direct wiring.
     // ══════════════════════════════════════════════════════════════════════════
     public sealed class VerticalSliceBootstrap : MonoBehaviour
     {
@@ -53,72 +55,155 @@ namespace MidnightReturn.VerticalSlice
         [Tooltip("Reposition the tagged Player to the room entrance on boot.")]
         [SerializeField] private bool _movePlayerToSpawn = true;
 
-        private Vector3 SpawnPoint => new(
+        // ── Room 1 state ─────────────────────────────────────────────────────
+        private readonly List<GameObject>  _room1Objects  = new();
+        private readonly HashSet<string>   _room1EnemyIds = new();
+        private          int               _room1EnemiesAlive;
+        private          ProceduralRoomTransition _exitDoor;
+
+        private Vector3 Room1SpawnPoint => new(
             VerticalSliceContent.ColX(3),
             VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW) + 0.2f,
             0f);
 
+        private Vector3 Room2SpawnPoint => new(
+            CatacombsContent.ColX(CatacombsContent.SPAWN_COL),
+            CatacombsContent.SurfaceY(CatacombsContent.HIGH_PLAT_ROW) + 0.2f,
+            0f);
+
+        // ── Lifecycle ─────────────────────────────────────────────────────────
         private void Start()
         {
-            transform.position = Vector3.zero; // room is authored in world space from origin
+            transform.position = Vector3.zero;
+            EventBus.Subscribe<EnemyDiedEvent>(OnEnemyDied);
 
-            BuildTilemap();
-            BuildEnemies();
-            BuildStatue();
-            BuildLadder();
+            BuildRoom1();
 
             if (_movePlayerToSpawn)
-            {
-                var player = GameObject.FindGameObjectWithTag("Player");
-                if (player) player.transform.position = SpawnPoint;
-            }
+                RepositionPlayer(Room1SpawnPoint);
 
             RenderSettings.ambientLight = new Color(0.06f, 0.05f, 0.09f);
-            StartCoroutine(KickRoomEntered());
+            StartCoroutine(KickRoomEvent("vs_entrance_threshold",
+                                          "Entrance Hall — Threshold",
+                                          ZoneType.EntranceHall));
         }
 
-        // ── 1. Tilemap ────────────────────────────────────────────────────────
-        private void BuildTilemap()
+        private void OnDisable()
         {
-            // Main layer (floor, walls, platforms) — full PBR stone material
-            var mainSet = VerticalSliceContent.BuildTileSet(_tileAtlas, TileMaterial());
-            BakeLayer("TileLayer_Main", VerticalSliceContent.BuildMainLayer(), mainSet);
-
-            // Background layer — separate brick material (darker, no collision)
-            var bgAtlas = _brickBaseColor != null ? _brickBaseColor : _tileAtlas;
-            var bgSet   = VerticalSliceContent.BuildTileSet(bgAtlas, BrickMaterial());
-            BakeLayer("TileLayer_BG", VerticalSliceContent.BuildBackgroundLayer(), bgSet);
+            EventBus.Unsubscribe<EnemyDiedEvent>(OnEnemyDied);
         }
 
-        private void BakeLayer(string name, TilemapLayerSO layer, TileSetSO set)
+        // ══════════════════════════════════════════════════════════════════════
+        //  Room 1 — Entrance Hall
+        // ══════════════════════════════════════════════════════════════════════
+        private void BuildRoom1()
         {
-            var go = new GameObject(name);
-            go.transform.SetParent(transform, false);
-            var builder = go.AddComponent<TileChunkBuilder>(); // adds MeshFilter+Renderer
-            builder.Configure(set, layer);
-            builder.Build();
-        }
+            BuildTilemap(VerticalSliceContent.BuildMainLayer(),
+                         VerticalSliceContent.BuildBackgroundLayer(),
+                         "Room1");
 
-        // ── 2. Enemies ──────────────────────────────────────────────────────────
-        private void BuildEnemies()
-        {
-            // Skeleton patrols the main floor near the entrance
             SpawnPatrol(VerticalSliceContent.BuildSkeleton(),
                 new Vector3(VerticalSliceContent.ColX(15),
                             VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW) + 0.1f, 0f),
                 new Color(0.85f, 0.85f, 0.7f));
 
-            // Zombie patrols the low-left ledge
             SpawnPatrol(VerticalSliceContent.BuildZombie(),
                 new Vector3(VerticalSliceContent.ColX(9),
                             VerticalSliceContent.SurfaceY(VerticalSliceContent.LEDGE_ROW) + 0.1f, 0f),
                 new Color(0.3f, 0.7f, 0.25f));
+
+            BuildStatue(
+                new Vector3(VerticalSliceContent.ColX(33),
+                            VerticalSliceContent.SurfaceY(VerticalSliceContent.PLAT_ROW) + 0.05f, 0f));
+
+            BuildLadder(VerticalSliceContent.ColX(VerticalSliceContent.LADDER_COL),
+                        VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW),
+                        VerticalSliceContent.SurfaceY(VerticalSliceContent.PLAT_ROW));
+
+            BuildExitDoor(
+                new Vector3((VerticalSliceContent.W - 1) * VerticalSliceContent.TILE - 0.15f,
+                             VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW) * 0.5f, 0f),
+                VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW));
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  Room 2 — Catacombs: Shattered Hall
+        // ══════════════════════════════════════════════════════════════════════
+        private void SwitchToRoom2()
+        {
+            // Tear down Room 1
+            foreach (var go in _room1Objects)
+                if (go) Destroy(go);
+            _room1Objects.Clear();
+            _room1EnemyIds.Clear();
+
+            // Build Room 2
+            BuildTilemap(CatacombsContent.BuildMainLayer(),
+                         CatacombsContent.BuildBackgroundLayer(),
+                         "Room2");
+
+            SpawnPatrol(CatacombsContent.BuildShade(),
+                new Vector3(CatacombsContent.ColX(5),
+                            CatacombsContent.SurfaceY(CatacombsContent.HIGH_PLAT_ROW) + 0.1f, 0f),
+                new Color(0.5f, 0.5f, 0.65f));
+
+            SpawnPatrol(CatacombsContent.BuildWraith(),
+                new Vector3(CatacombsContent.ColX(35),
+                            CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW) + 0.1f, 0f),
+                new Color(0.65f, 0.3f, 0.8f));
+
+            RepositionPlayer(Room2SpawnPoint);
+
+            RenderSettings.ambientLight = new Color(0.04f, 0.03f, 0.07f); // darker
+            StartCoroutine(KickRoomEvent("catacombs_shattered_hall",
+                                          "Catacombs — Shattered Hall",
+                                          ZoneType.Catacombs));
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  Kill tracking — unlocks exit when all Room 1 enemies die
+        // ══════════════════════════════════════════════════════════════════════
+        private void OnEnemyDied(EnemyDiedEvent e)
+        {
+            if (!_room1EnemyIds.Remove(e.EnemyId)) return;
+            _room1EnemiesAlive = Mathf.Max(0, _room1EnemiesAlive - 1);
+
+            if (_room1EnemiesAlive == 0 && _exitDoor != null)
+                _exitDoor.Unlock();
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  Shared builders
+        // ══════════════════════════════════════════════════════════════════════
+        private void BuildTilemap(TilemapLayerSO main, TilemapLayerSO bg, string prefix)
+        {
+            var mainSet = VerticalSliceContent.BuildTileSet(_tileAtlas, TileMaterial());
+            var bgSet   = VerticalSliceContent.BuildTileSet(
+                              _brickBaseColor != null ? _brickBaseColor : _tileAtlas,
+                              BrickMaterial());
+
+            var mainGO = BakeLayer($"{prefix}_TileLayer_Main", main, mainSet);
+            var bgGO   = BakeLayer($"{prefix}_TileLayer_BG",   bg,   bgSet);
+
+            _room1Objects.Add(mainGO);
+            _room1Objects.Add(bgGO);
+        }
+
+        private GameObject BakeLayer(string name, TilemapLayerSO layer, TileSetSO set)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            var builder = go.AddComponent<TileChunkBuilder>();
+            builder.Configure(set, layer);
+            builder.Build();
+            return go;
         }
 
         private void SpawnPatrol(EnemyDataSO data, Vector3 pos, Color tint)
         {
             var go = new GameObject("Enemy_" + data.EnemyId) { layer = _enemyLayer };
             go.transform.position = pos;
+            _room1Objects.Add(go);
 
             var cc = go.AddComponent<CharacterController>();
             cc.height = 1.6f; cc.radius = 0.4f; cc.center = new Vector3(0f, 0.8f, 0f);
@@ -129,25 +214,24 @@ namespace MidnightReturn.VerticalSlice
             vis.transform.SetParent(go.transform, false);
             vis.transform.localScale    = new Vector3(0.8f, 1.6f, 0.4f);
             vis.transform.localPosition = new Vector3(0f, 0.8f, 0f);
-            // Drop the primitive's own collider — the CharacterController is the
-            // hittable collider PlayerCombat's OverlapBox resolves to.
             var primCol = vis.GetComponent<Collider>();
             if (primCol) Destroy(primCol);
             vis.GetComponent<MeshRenderer>().sharedMaterial = LitMaterial(tint);
 
-            // PatrolEnemy.Awake caches the CC + child renderer and reads origin
-            // from transform.position, so position & components must exist first.
             var enemy = go.AddComponent<PatrolEnemy>();
             enemy.Configure(data);
+
+            // Register for kill tracking (Room 1 and Room 2 enemies share the same tracker;
+            // Room 2 enemies don't gate anything so the unlocked door is a no-op).
+            _room1EnemyIds.Add(data.EnemyId);
+            _room1EnemiesAlive++;
         }
 
-        // ── 3. Save statue ──────────────────────────────────────────────────────
-        private void BuildStatue()
+        private void BuildStatue(Vector3 pos)
         {
             var go = new GameObject("SaveStatue");
-            go.transform.position = new Vector3(
-                VerticalSliceContent.ColX(33),
-                VerticalSliceContent.SurfaceY(VerticalSliceContent.PLAT_ROW) + 0.05f, 0f);
+            go.transform.position = pos;
+            _room1Objects.Add(go);
 
             var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
             vis.transform.SetParent(go.transform, false);
@@ -164,15 +248,11 @@ namespace MidnightReturn.VerticalSlice
             go.AddComponent<SaveStatue>();
         }
 
-        // ── 4. Ladder ───────────────────────────────────────────────────────────
-        private void BuildLadder()
+        private void BuildLadder(float x, float yBottom, float yTop)
         {
-            float yBottom = VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW);
-            float yTop    = VerticalSliceContent.SurfaceY(VerticalSliceContent.PLAT_ROW);
-            float x       = VerticalSliceContent.ColX(VerticalSliceContent.LADDER_COL);
-
             var go = new GameObject("Ladder");
             go.transform.position = new Vector3(x, (yBottom + yTop) * 0.5f, 0f);
+            _room1Objects.Add(go);
 
             var box = go.AddComponent<BoxCollider>();
             box.isTrigger = true;
@@ -181,24 +261,44 @@ namespace MidnightReturn.VerticalSlice
             go.AddComponent<ClimbableVolume>();
         }
 
-        // ── 5/6. Announce the room ──────────────────────────────────────────────
-        private IEnumerator KickRoomEntered()
+        private void BuildExitDoor(Vector3 pos, float wallHeight)
         {
-            yield return null; // let every Awake/OnEnable subscribe first
+            var go = new GameObject("ExitDoor_Room1");
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            var box = go.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(1.2f, wallHeight, 1f);
+
+            _exitDoor = go.AddComponent<ProceduralRoomTransition>();
+            _exitDoor.OnMidpoint = SwitchToRoom2;
+            // Door starts locked — unlocked when all Room 1 enemies die.
+        }
+
+        // ── Room event emission ───────────────────────────────────────────────
+        private IEnumerator KickRoomEvent(string roomId, string displayName, ZoneType zone)
+        {
+            yield return null; // let Awake/OnEnable subscriptions register first
             EventBus.Emit(new RoomTransitionCompleteEvent
             {
-                RoomId      = "vs_entrance_threshold",
-                DisplayName = "Entrance Hall — Threshold",
-                Zone        = ZoneType.EntranceHall,
+                RoomId      = roomId,
+                DisplayName = displayName,
+                Zone        = zone,
             });
         }
 
-        // ── Material helpers ────────────────────────────────────────────────────
+        private static void RepositionPlayer(Vector3 pos)
+        {
+            var player = GameObject.FindGameObjectWithTag("Player");
+            if (player) player.transform.position = pos;
+        }
+
+        // ── Material helpers ─────────────────────────────────────────────────
         private Material TileMaterial()
         {
             if (_tileMaterial != null) return _tileMaterial;
 
-            // Full-override atlas (legacy path)
             if (_tileAtlas != null)
             {
                 var m = LitMaterial(Color.white);
@@ -206,15 +306,12 @@ namespace MidnightReturn.VerticalSlice
                 return m;
             }
 
-            // PBR path — HDRPTileMaterial handles shader detection + keyword setup
             if (_stoneBaseColor != null || _stoneNormalMap != null || _stoneMaskMap != null)
                 return HDRPTileMaterial.BuildStoneMaterial(_stoneBaseColor, _stoneNormalMap, _stoneMaskMap);
 
-            // Flat fallback: stone-grey procedural material
             return LitMaterial(new Color(0.4f, 0.38f, 0.45f));
         }
 
-        // Separate material for background brick layer.
         private Material BrickMaterial()
         {
             if (_brickBaseColor != null || _brickNormalMap != null || _brickMaskMap != null)

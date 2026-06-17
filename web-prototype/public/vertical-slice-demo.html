@@ -83,6 +83,7 @@ canvas{display:block;background:#08060f;}
 
   <div class="banner" id="banner">Entrance Hall — Threshold</div>
   <div class="toast"  id="toast"></div>
+  <div id="fade" style="position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:20;transition:opacity 0.3s;"></div>
 </div>
 
 <div class="help">
@@ -153,6 +154,14 @@ addEventListener('keyup',e=>{K[e.key.toLowerCase()]=false;if(e.key===' ')K['spac
 let hitstop=0, shake=0;
 const toast=(t)=>{const el=document.getElementById('toast');el.textContent=t;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');};
 
+// ── Room state ────────────────────────────────────────────────────────────────
+let currentRoom=1;
+let doorUnlocked=false;
+let transitioning=false;
+let spawnCur={x:spawn.x,y:spawn.y};
+let ladderX0Cur=ladderX0, ladderX1Cur=ladderX1;
+let ladderTopCur=ladderTop, ladderBotCur=ladderBot;
+
 // ── Physics helpers ──────────────────────────────────────────────────────────
 function moveAxis(ent,dx,dy){
   // X
@@ -183,8 +192,87 @@ function gainExp(n){
 }
 
 function reset(){
+  currentRoom=1;doorUnlocked=false;transitioning=false;
+  // Rebuild room 1 grid
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)grid[r][c]=0;
+  for(let c=0;c<COLS;c++)set(0,c,1);
+  for(let r=0;r<ROWS;r++){set(r,0,1);set(r,COLS-1,1);}
+  rect(FLOOR_ROW,1,ROWS-1,COLS-2,1);
+  rect(FLOOR_ROW,PIT0,ROWS-1,PIT1,0);
+  rect(LEDGE_ROW,LEDGE0,LEDGE_ROW,LEDGE1,1);
+  rect(PLAT_ROW,PLAT0,PLAT_ROW,PLAT1,1);
+  spawnCur={x:spawn.x,y:spawn.y};
+  ladderX0Cur=ladderX0;ladderX1Cur=ladderX1;
+  ladderTopCur=ladderTop;ladderBotCur=ladderBot;
+  document.getElementById('fade').style.opacity='0';
   P.x=spawn.x;P.y=spawn.y;P.vx=0;P.vy=0;P.hp=P.mhp;P.mp=P.mmp;P.iframes=0;P.climbing=false;
-  resetEnemies();statue.used=false;shots=[];particles=[];dust=[];
+  resetEnemies();statue.used=false;statue._used=false;shots=[];particles=[];dust=[];
+}
+
+// ── Room 2 (Catacombs) ───────────────────────────────────────────────────────
+const R2={
+  HIGH_ROW:5, HIGH_X0:2,  HIGH_X1:11,
+  MID_ROW:8,  MID_X0:14,  MID_X1:23,
+  LOW_ROW:11, LOW_X0:26,  LOW_X1:36,
+  FLOOR_ROW:FLOOR_ROW,
+  LEFT_FLOOR_X1:6, RIGHT_FLOOR_X0:32,
+  STALA1:9, STALA2:24
+};
+
+function buildRoom2Grid(){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)grid[r][c]=0;
+  for(let c=0;c<COLS;c++)set(0,c,1);
+  for(let r=0;r<ROWS;r++){set(r,0,1);set(r,COLS-1,1);}
+  rect(FLOOR_ROW,1,ROWS-1,R2.LEFT_FLOOR_X1,1);
+  rect(FLOOR_ROW,R2.RIGHT_FLOOR_X0,ROWS-1,COLS-2,1);
+  for(let c=R2.HIGH_X0;c<=R2.HIGH_X1;c++)set(R2.HIGH_ROW,c,1);
+  for(let c=R2.MID_X0;c<=R2.MID_X1;c++)set(R2.MID_ROW,c,1);
+  for(let c=R2.LOW_X0;c<=R2.LOW_X1;c++)set(R2.LOW_ROW,c,1);
+  for(let r=0;r<5;r++){set(r,R2.STALA1,1);set(r,R2.STALA1+1,1);}
+  for(let r=0;r<4;r++){set(r,R2.STALA2,1);set(r,R2.STALA2+1,1);}
+}
+
+function resetRoom2Enemies(){
+  enemies=[
+    mkEnemy({type:'Shade',x:5*S,y:R2.HIGH_ROW*S-30,hp:35,mhp:35,atk:14,def:3,exp:30,
+             home:5*S,range:3*S,spd:1.0,det:6*S,col:'#8888aa',floorRow:R2.HIGH_ROW,
+             lx0:R2.HIGH_X0*S,lx1:(R2.HIGH_X1+1)*S}),
+    mkEnemy({type:'Wraith',x:34*S,y:FLOOR_ROW*S-30,hp:25,mhp:25,atk:18,def:0,exp:35,
+             home:34*S,range:4*S,spd:1.4,det:8*S,col:'#aa66cc',floorRow:R2.FLOOR_ROW,
+             lx0:R2.RIGHT_FLOOR_X0*S,lx1:(COLS-2)*S}),
+  ];
+}
+
+function checkRoomClear(){
+  if(currentRoom!==1||doorUnlocked)return;
+  if(enemies.every(e=>e.dead)){
+    doorUnlocked=true;
+    toast('✦ Exit Opened');
+  }
+}
+
+function startTransition(){
+  if(transitioning)return;
+  transitioning=true;
+  const fade=document.getElementById('fade');
+  fade.style.opacity='1';
+  setTimeout(()=>{
+    currentRoom=2;
+    buildRoom2Grid();
+    resetRoom2Enemies();
+    spawnCur={x:R2.HIGH_X0*S+4,y:R2.HIGH_ROW*S-30};
+    ladderX0Cur=-999;ladderX1Cur=-998;
+    ladderTopCur=-999;ladderBotCur=-998;
+    P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;P.climbing=false;
+    shots=[];particles=[];
+    const ban=document.getElementById('banner');
+    ban.textContent='Catacombs — Shattered Hall';
+    ban.classList.remove('show');
+    void ban.offsetWidth;
+    ban.classList.add('show');
+    fade.style.opacity='0';
+    setTimeout(()=>{transitioning=false;},320);
+  },320);
 }
 
 // ── Particle system ──────────────────────────────────────────────────────────
@@ -337,8 +425,8 @@ function update(){
   if(K['r']){reset();K['r']=false;}
 
   // ladder detection
-  const onLadderX = (P.x+P.w/2)>ladderX0 && (P.x+P.w/2)<ladderX1;
-  const inLadderY = (P.y+P.h)>ladderTop-4 && P.y<ladderBot+S;
+  const onLadderX = (P.x+P.w/2)>ladderX0Cur && (P.x+P.w/2)<ladderX1Cur;
+  const inLadderY = (P.y+P.h)>ladderTopCur-4 && P.y<ladderBotCur+S;
   const canClimb = onLadderX && inLadderY;
   if(canClimb && (K['arrowup']||K['arrowdown']) && !P.climbing){P.climbing=true;P.vy=0;}
   if(P.climbing && !canClimb)P.climbing=false;
@@ -346,9 +434,9 @@ function update(){
   if(P.climbing){
     P.vy=0;
     let cy=0; if(K['arrowup'])cy=-2.0; else if(K['arrowdown'])cy=2.0;
-    P.x += ((ladderX0+ladderX1)/2 - (P.x+P.w/2))*0.4; // snap to centre
+    P.x += ((ladderX0Cur+ladderX1Cur)/2 - (P.x+P.w/2))*0.4; // snap to centre
     P.y += cy;
-    if(P.y<ladderTop-P.h){P.climbing=false;P.y=ladderTop-P.h;}        // over the top
+    if(P.y<ladderTopCur-P.h){P.climbing=false;P.y=ladderTopCur-P.h;}        // over the top
     if(K['z']||K['space']){P.climbing=false;P.vy=-6.4;}               // jump off
     if(P.grounded&&K['arrowdown'])P.climbing=false;
     moveAxis(P,0,0); // keep grounded flag fresh
@@ -369,7 +457,7 @@ function update(){
   }
 
   // fell in pit
-  if(P.y>H+40){hurtPlayer(10);P.x=spawn.x;P.y=spawn.y;P.vx=0;P.vy=0;}
+  if(P.y>H+40){hurtPlayer(10);P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;}
 
   // attack
   if((K['j'])&&P.atk<=0){P.atk=14;}
@@ -384,7 +472,7 @@ function update(){
           let dmg=Math.max(1,8+P.lv*3-e.def)+Math.floor(Math.random()*5);
           e.hp-=dmg; e.hitFlash=8; hitstop=2; shake=4;
           addParticles(e.x+e.w/2,e.y+e.h/2,'#ffeeaa',8);
-          if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,28);}
+          if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,28);checkRoomClear();}
         }
       }
     }
@@ -398,7 +486,7 @@ function update(){
   for(const s of shots){for(const e of enemies){if(e.dead)continue;
     if(s.x>e.x&&s.x<e.x+e.w&&s.y>e.y&&s.y<e.y+e.h){e.hp-=14;e.hitFlash=8;s.life=0;
       addParticles(e.x+e.w/2,e.y+e.h/2,'#aaddff',8);
-      if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,28);}}}}
+      if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,28);checkRoomClear();}}}}
   shots=shots.filter(s=>s.life>0&&s.x>0&&s.x<W);
 
   // enemies
@@ -422,14 +510,24 @@ function update(){
   }
   enemies=enemies.filter(e=>!(e.dead&&e.dissolve>=1));
 
-  // statue
-  const sd=Math.hypot((P.x+P.w/2)-(statue.x+10),(P.y+P.h/2)-(statue.y+14));
-  statue.near = sd<statue.r;
-  statue.glow = 0.5+0.5*Math.sin(Date.now()/300);
-  if(statue.near&&K['e']&&!statue._used){statue._used=true;statue.used=true;
-    P.hp=P.mhp;P.mp=Math.min(P.mmp,P.mp+Math.floor(P.mmp/2));
-    toast('✦ Game Saved — HP/MP Restored'); shake=2;}
-  if(!K['e'])statue._used=false;
+  // Exit door trigger (Room 1 only)
+  if(currentRoom===1&&doorUnlocked&&!transitioning){
+    const doorX=(COLS-1)*S-4;
+    if(P.x+P.w>=doorX)startTransition();
+  }
+
+  // statue (Room 1 only)
+  if(currentRoom===1){
+    const sd=Math.hypot((P.x+P.w/2)-(statue.x+10),(P.y+P.h/2)-(statue.y+14));
+    statue.near = sd<statue.r;
+    statue.glow = 0.5+0.5*Math.sin(Date.now()/300);
+    if(statue.near&&K['e']&&!statue._used){statue._used=true;statue.used=true;
+      P.hp=P.mhp;P.mp=Math.min(P.mmp,P.mp+Math.floor(P.mmp/2));
+      toast('✦ Game Saved — HP/MP Restored'); shake=2;}
+    if(!K['e'])statue._used=false;
+  } else {
+    statue.near=false;
+  }
 
   // timers / regen
   if(P.iframes>0)P.iframes--;
