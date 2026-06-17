@@ -41,6 +41,14 @@ namespace MidnightReturn.Player.States
                 Movement.FacingDir,
                 _combo
             );
+
+            // Feed the dynamic-mix combat-intensity meter
+            EventBus.Emit(new PlayerAttackEvent
+            {
+                Origin     = Player.transform.position,
+                Direction  = (int)Movement.FacingDir,
+                ComboIndex = _combo,
+            });
         }
 
         public override void OnUpdate(float dt)

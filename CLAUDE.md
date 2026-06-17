@@ -149,5 +149,13 @@ Level-up: random stat growth with variance, full HP/MP restore
   - GameManager.cs — SaveData.SpellSlots[4] added
   - PlayerController.cs — RestoreMp() added
   - web-prototype/public/inventory-demo.html — interactive gothic inventory demo
-- [ ] Phase 6: Full audio pipeline, music zones, dynamic mix
+- [x] Phase 6: Full audio pipeline, music zones, dynamic mix
+  - MusicZoneSO.cs — per-zone stem contract: exploration/combat/boss tracks, ambient bed, reverb preset + wet, mixer snapshot, mix ceilings
+  - AudioManager.cs — rewritten layered engine: ping-pong base music crossfade, adaptive combat-layer source, ambient bed, positional 3D SFX pool, AudioMixer bus volumes (linear→dB), ducking, reverb filter control, FadeOutAll (fixes prior CS0111 CrossFade collision)
+  - MusicDirector.cs — EventBus-driven dynamic-mix brain: zone resolve on room enter, decaying combat-intensity meter (attack/hit/kill bumps) → adaptive layering, boss override + return, fade on death
+  - PlayerAudio.cs — foley: run-cadence footsteps, jump/land/dash one-shots, looping wall-slide scrape, hurt grunt
+  - AttackState.cs — emits PlayerAttackEvent to feed the intensity meter
+  - EventBus.cs — MusicZoneChangedEvent, CombatIntensityEvent, MusicStateChangedEvent
+  - Assets/Settings/AudioMixerSetup.md — mixer groups, exposed params, snapshots, reverb, stem authoring rules
+  - web-prototype/public/audio-mixer-demo.html — live Web Audio mirror: synthesized per-zone stems, intensity meter, adaptive combat layer, boss override, bus faders (keys 1–5 zones, A/H/K events, B boss)
 - [ ] Phase 7: Level art pipeline — tile system, parallax, HDRP lighting per zone

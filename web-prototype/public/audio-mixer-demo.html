@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Midnight Return — Dynamic Audio Mix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --gold:#b49434; --gold-dim:#7a6840; --blood:#8b1a1a; --ink:#0a0710;
+  --panel:rgba(18,13,28,.78); --line:rgba(180,148,52,.16);
+}
+body{
+  background:radial-gradient(ellipse at 50% -10%,#160f24 0%,#08050f 55%,#000 100%);
+  color:#c8bca0; font-family:'Cinzel',serif; min-height:100vh; overflow-x:hidden;
+  display:flex; flex-direction:column; align-items:center; padding:28px 16px 60px;
+}
+h1{font-size:20px; letter-spacing:7px; font-weight:700; color:var(--gold);
+  text-transform:uppercase; text-shadow:0 0 24px rgba(180,148,52,.35)}
+.sub{font-size:9px; letter-spacing:4px; color:var(--gold-dim); margin-top:7px; text-transform:uppercase}
+.wrap{width:min(960px,96vw); margin-top:26px; display:grid; gap:18px}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  padding:18px 20px; backdrop-filter:blur(4px);
+  box-shadow:inset 0 0 40px rgba(0,0,0,.5), 0 8px 30px rgba(0,0,0,.5)}
+.panel h2{font-size:10px; letter-spacing:4px; color:var(--gold-dim); text-transform:uppercase;
+  margin-bottom:14px; border-bottom:1px solid var(--line); padding-bottom:9px}
+.row{display:flex; gap:10px; flex-wrap:wrap}
+
+/* Gate */
+#gate{position:fixed; inset:0; background:radial-gradient(ellipse at 50% 40%,#160f24,#000);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:50; gap:22px; cursor:pointer; transition:opacity .6s}
+#gate h1{font-size:26px}
+.begin{border:1px solid var(--gold); color:var(--gold); padding:14px 40px; letter-spacing:5px;
+  font-size:12px; text-transform:uppercase; border-radius:3px; background:rgba(180,148,52,.06);
+  transition:.25s}
+.begin:hover{background:rgba(180,148,52,.16); box-shadow:0 0 30px rgba(180,148,52,.3)}
+
+/* Zone buttons */
+.zone{flex:1; min-width:130px; padding:12px 8px; border:1px solid var(--line);
+  background:rgba(10,7,16,.5); color:var(--gold-dim); letter-spacing:2px; font-size:10px;
+  text-transform:uppercase; cursor:pointer; border-radius:3px; transition:.2s; text-align:center}
+.zone:hover{border-color:var(--gold-dim); color:#c8bca0}
+.zone.active{border-color:var(--gold); color:var(--gold); background:rgba(180,148,52,.1);
+  box-shadow:inset 0 0 20px rgba(180,148,52,.12)}
+.zone small{display:block; font-size:7px; letter-spacing:1px; margin-top:5px; opacity:.6}
+
+/* Stems / VU meters */
+.stem{display:grid; grid-template-columns:120px 1fr 42px; align-items:center; gap:12px; margin-bottom:11px}
+.stem-name{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#a8997a}
+.vu{height:11px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.06);
+  border-radius:2px; overflow:hidden; position:relative}
+.vu-fill{height:100%; width:0%; transform-origin:left; transition:width .05s linear}
+.vu-amb .vu-fill{background:linear-gradient(90deg,#1a3a4a,#2d7a9a)}
+.vu-exp .vu-fill{background:linear-gradient(90deg,#2a4a1a,#6aaa3a)}
+.vu-cmb .vu-fill{background:linear-gradient(90deg,#6b0000,#e23a3a)}
+.vu-boss .vu-fill{background:linear-gradient(90deg,#3a0a4a,#a23ad2)}
+.stem-val{font-size:9px; color:var(--gold-dim); text-align:right; font-variant-numeric:tabular-nums}
+
+/* Intensity */
+.intensity-big{height:26px; background:rgba(0,0,0,.55); border:1px solid var(--line);
+  border-radius:3px; overflow:hidden; position:relative; margin-bottom:6px}
+.intensity-big .vu-fill{background:linear-gradient(90deg,#2a4a1a 0%,#caa024 45%,#e23a3a 80%,#ff5050 100%);
+  box-shadow:0 0 18px rgba(226,58,58,.5)}
+.intensity-label{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:9px; letter-spacing:4px; text-transform:uppercase; color:#fff; mix-blend-mode:overlay; font-weight:700}
+.statechip{display:inline-block; padding:4px 14px; font-size:9px; letter-spacing:3px; text-transform:uppercase;
+  border:1px solid var(--line); border-radius:20px; color:var(--gold)}
+
+/* Action buttons */
+.act{flex:1; min-width:90px; padding:11px; border:1px solid var(--line); background:rgba(10,7,16,.5);
+  color:#a8997a; letter-spacing:2px; font-size:10px; text-transform:uppercase; cursor:pointer;
+  border-radius:3px; transition:.15s; font-family:'Cinzel',serif}
+.act:hover{border-color:var(--gold-dim); color:#d8ccb0}
+.act:active{transform:scale(.96); background:rgba(180,148,52,.12)}
+.act.boss{border-color:rgba(162,58,210,.4); color:#c08ad2}
+.act.boss.on{background:rgba(162,58,210,.18); border-color:#a23ad2; color:#e0b0f0;
+  box-shadow:0 0 20px rgba(162,58,210,.3)}
+
+/* Faders */
+.fader{display:grid; grid-template-columns:70px 1fr 38px; align-items:center; gap:12px; margin-bottom:13px}
+.fader label{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#a8997a}
+input[type=range]{-webkit-appearance:none; appearance:none; height:4px; background:rgba(180,148,52,.18);
+  border-radius:2px; outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:15px; height:15px;
+  border-radius:50%; background:var(--gold); cursor:pointer; box-shadow:0 0 10px rgba(180,148,52,.5)}
+input[type=range]::-moz-range-thumb{width:15px; height:15px; border:none; border-radius:50%;
+  background:var(--gold); cursor:pointer}
+.fader-val{font-size:9px; color:var(--gold-dim); text-align:right; font-variant-numeric:tabular-nums}
+.note{font-size:8px; letter-spacing:1px; color:var(--gold-dim); opacity:.6; margin-top:4px; line-height:1.7}
+.arch{font-size:13px; color:var(--blood); opacity:.5}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="arch">✷ ✷ ✷</div>
+  <h1>Midnight Return</h1>
+  <div class="sub">Dynamic Audio Mix — Live Synthesis</div>
+  <div class="begin" id="begin">Begin Audio</div>
+  <div class="note" style="max-width:340px;text-align:center">Web Audio mirror of the Unity AudioManager + MusicDirector.<br>All stems are synthesized live in your browser.</div>
+</div>
+
+<h1>Dynamic Audio Mix</h1>
+<div class="sub">MusicDirector · Layered Stems · Adaptive Combat</div>
+
+<div class="wrap">
+
+  <div class="panel">
+    <h2>Music Zone</h2>
+    <div class="row" id="zones"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Layered Stems — live output</h2>
+    <div class="stem">
+      <span class="stem-name">Ambient Bed</span>
+      <div class="vu vu-amb"><div class="vu-fill" id="vu-amb"></div></div>
+      <span class="stem-val" id="val-amb">0.40</span>
+    </div>
+    <div class="stem">
+      <span class="stem-name">Exploration</span>
+      <div class="vu vu-exp"><div class="vu-fill" id="vu-exp"></div></div>
+      <span class="stem-val" id="val-exp">0.70</span>
+    </div>
+    <div class="stem">
+      <span class="stem-name">Combat Layer</span>
+      <div class="vu vu-cmb"><div class="vu-fill" id="vu-cmb"></div></div>
+      <span class="stem-val" id="val-cmb">0.00</span>
+    </div>
+    <div class="stem">
+      <span class="stem-name">Boss Track</span>
+      <div class="vu vu-boss"><div class="vu-fill" id="vu-boss"></div></div>
+      <span class="stem-val" id="val-boss">0.00</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Combat Intensity — adaptive layering driver</h2>
+    <div class="intensity-big">
+      <div class="vu-fill" id="intensity-fill"></div>
+      <div class="intensity-label" id="intensity-pct">0%</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 14px">
+      <span class="note" style="margin:0">Bumped by combat events · decays 0.35/s</span>
+      <span class="statechip" id="statechip">Explore</span>
+    </div>
+    <div class="row">
+      <button class="act" id="atk">⚔ Attack <small>+.18</small></button>
+      <button class="act" id="hit">✦ Take Hit <small>+.40</small></button>
+      <button class="act" id="kill">☠ Kill <small>+.30</small></button>
+      <button class="act boss" id="boss">♛ Boss Fight</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Mixer Buses</h2>
+    <div class="fader">
+      <label>Master</label>
+      <input type="range" id="f-master" min="0" max="1" step="0.01" value="0.85">
+      <span class="fader-val" id="v-master">85</span>
+    </div>
+    <div class="fader">
+      <label>Music</label>
+      <input type="range" id="f-music" min="0" max="1" step="0.01" value="0.70">
+      <span class="fader-val" id="v-music">70</span>
+    </div>
+    <div class="fader">
+      <label>SFX</label>
+      <input type="range" id="f-sfx" min="0" max="1" step="0.01" value="0.80">
+      <span class="fader-val" id="v-sfx">80</span>
+    </div>
+    <div class="note">Reverb send + convolver impulse re-generated per zone (StoneCorridor → Cave → Hall).</div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+//  WebAudio mirror of AudioManager + MusicDirector.
+//  Stems are synthesized live; combat layer gain = smoothed intensity (adaptive).
+// ════════════════════════════════════════════════════════════════════════════
+
+// Zone musical identity — mirrors MusicZoneSO entries.
+const ZONES = {
+  EntranceHall:  { name:'Entrance Hall',  root:220.0, scale:[0,2,3,5,7,8,10], tempo:84,  reverb:1.4, amb:[180,420],  hue:'#6aaa3a' },
+  Catacombs:     { name:'Catacombs',      root:146.8, scale:[0,1,3,5,6,8,10], tempo:68,  reverb:2.6, amb:[90,260],   hue:'#3a7a4a' },
+  CursedLibrary: { name:'Cursed Library', root:164.8, scale:[0,2,3,5,7,8,11], tempo:78,  reverb:2.0, amb:[200,520],  hue:'#3a6a9a' },
+  Clocktower:    { name:'Clocktower',     root:246.9, scale:[0,2,3,5,7,9,10], tempo:104, reverb:1.1, amb:[260,640],  hue:'#9a8a3a' },
+  ThroneRoom:    { name:'Throne Room',    root:130.8, scale:[0,2,3,7,8,10,11],tempo:72,  reverb:2.2, amb:[70,300],   hue:'#a23ad2' },
+};
+const ZONE_KEYS = Object.keys(ZONES);
+
+// MusicDirector constants
+const DECAY = 0.35, ATK_BUMP = 0.18, HIT_BUMP = 0.40, KILL_BUMP = 0.30;
+const COMBAT_MAX = 0.85;
+
+let ac, master, musicBus, sfxBus, reverb, reverbWet, reverbDry;
+let ambGain, expGain, cmbGain, bossGain;          // stem gains
+let ambNode;                                       // wind noise source
+let lfo;
+let started = false;
+
+let curZone = 'CursedLibrary';
+let intensity = 0;
+let bossActive = false;
+let state = 'Explore';
+
+// Smoothed display values
+const disp = { amb:0, exp:0, cmb:0, boss:0 };
+
+// ── Build the audio graph ──────────────────────────────────────────────────
+function initAudio(){
+  ac = new (window.AudioContext||window.webkitAudioContext)();
+
+  master = ac.createGain();   master.gain.value = 0.85;
+  master.connect(ac.destination);
+
+  musicBus = ac.createGain(); musicBus.gain.value = 0.70;
+  sfxBus   = ac.createGain(); sfxBus.gain.value   = 0.80;
+
+  // Reverb (convolver) with dry/wet
+  reverb    = ac.createConvolver();
+  reverbWet = ac.createGain(); reverbWet.gain.value = 0.5;
+  reverbDry = ac.createGain(); reverbDry.gain.value = 1.0;
+  musicBus.connect(reverbDry).connect(master);
+  musicBus.connect(reverb).connect(reverbWet).connect(master);
+  sfxBus.connect(master);
+
+  // Stem gains feed the music bus
+  ambGain  = ac.createGain(); ambGain.gain.value  = 0.4;
+  expGain  = ac.createGain(); expGain.gain.value  = 0.7;
+  cmbGain  = ac.createGain(); cmbGain.gain.value  = 0.0;
+  bossGain = ac.createGain(); bossGain.gain.value = 0.0;
+  [ambGain,expGain,cmbGain,bossGain].forEach(g=>g.connect(musicBus));
+
+  buildAmbient();
+  setReverbForZone(ZONES[curZone]);
+  scheduleLoop();
+  requestAnimationFrame(uiTick);
+}
+
+// Wind/ambient bed — filtered noise with a slow LFO on the bandpass.
+function buildAmbient(){
+  const buf = ac.createBuffer(1, ac.sampleRate*4, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for(let i=0;i<d.length;i++){ // brown-ish noise
+    last = (last + (Math.random()*2-1)*0.04); last = Math.max(-1,Math.min(1,last));
+    d[i] = last*0.6;
+  }
+  ambNode = ac.createBufferSource(); ambNode.buffer = buf; ambNode.loop = true;
+  const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=0.7;
+  const z = ZONES[curZone]; bp.frequency.value=(z.amb[0]+z.amb[1])/2;
+  lfo = ac.createOscillator(); lfo.frequency.value=0.07;
+  const lfoG = ac.createGain(); lfoG.gain.value=(z.amb[1]-z.amb[0])/2;
+  lfo.connect(lfoG).connect(bp.frequency);
+  ambNode.connect(bp).connect(ambGain);
+  ambNode.start(); lfo.start();
+  ambNode._bp = bp; ambNode._lfoG = lfoG;
+}
+
+// Generate a fresh reverb impulse sized to the zone.
+function setReverbForZone(z){
+  const len = Math.floor(ac.sampleRate * z.reverb);
+  const ir = ac.createBuffer(2, len, ac.sampleRate);
+  for(let ch=0;ch<2;ch++){
+    const d = ir.getChannelData(ch);
+    for(let i=0;i<len;i++){
+      d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.5);
+    }
+  }
+  reverb.buffer = ir;
+  reverbWet.gain.setTargetAtTime(Math.min(0.8, z.reverb*0.3), ac.currentTime, 0.3);
+  // retune ambient band
+  if(ambNode){
+    ambNode._bp.frequency.setTargetAtTime((z.amb[0]+z.amb[1])/2, ac.currentTime, 0.5);
+    ambNode._lfoG.gain.setTargetAtTime((z.amb[1]-z.amb[0])/2, ac.currentTime, 0.5);
+  }
+}
+
+// ── Note synthesis ─────────────────────────────────────────────────────────
+function noteFreq(z, degree, octave){
+  const s = z.scale, n = s.length;
+  let idx = ((degree % n) + n) % n;
+  let oct = octave + Math.floor(degree / n);
+  return z.root * Math.pow(2, oct) * Math.pow(2, s[idx]/12);
+}
+
+function pluck(dest, freq, t, dur, type, peak){
+  const o = ac.createOscillator(); o.type = type||'triangle'; o.frequency.value = freq;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(peak||0.25, t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0008, t+dur);
+  o.connect(g).connect(dest);
+  o.start(t); o.stop(t+dur+0.02);
+}
+
+function pad(dest, z, t, dur){
+  const degs = bossActive ? [0,1,4] : [0,2,4]; // boss → minor-2nd dissonance
+  degs.forEach((dg,i)=>{
+    const o = ac.createOscillator(); o.type='sawtooth';
+    o.frequency.value = noteFreq(z, dg, -1);
+    o.detune.value = (i-1)*6;
+    const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=520; lp.Q.value=4;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(0.10, t+dur*0.4);
+    g.gain.linearRampToValueAtTime(0.0008, t+dur);
+    o.connect(lp).connect(g).connect(dest);
+    o.start(t); o.stop(t+dur+0.05);
+  });
+}
+
+function kick(dest, t, peak){
+  const o = ac.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t+0.12);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(peak||0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.16);
+  o.connect(g).connect(dest);
+  o.start(t); o.stop(t+0.18);
+}
+
+// ── Scheduler (lookahead) ──────────────────────────────────────────────────
+let nextNote = 0, step = 0;
+const ARP = [0,2,4,2,3,4,2,0];
+
+function scheduleLoop(){
+  const z = ZONES[curZone];
+  const spb = 60 / z.tempo;        // seconds per beat
+  const sps = spb / 2;             // 8th notes
+  while(nextNote < ac.currentTime + 0.2){
+    const t = nextNote;
+    const explore = !bossActive;
+
+    // Pad every 4 steps
+    if(step % 8 === 0){
+      pad(explore ? expGain : bossGain, z, t, spb*4);
+    }
+    // Exploration / boss arpeggio
+    const deg = ARP[step % ARP.length];
+    if(explore){
+      pluck(expGain, noteFreq(z, deg, 0), t, sps*1.6, 'triangle', 0.16);
+    } else {
+      // boss — driving, octave + dissonant
+      pluck(bossGain, noteFreq(z, deg, 0), t, sps*1.4, 'sawtooth', 0.18);
+      if(step % 2 === 0) kick(bossGain, t, 0.55);
+    }
+
+    // Combat layer — higher octave + hats + kick, gated by cmbGain (intensity)
+    pluck(cmbGain, noteFreq(z, deg, 1), t, sps*1.1, 'square', 0.10);
+    if(step % 4 === 0) kick(cmbGain, t, 0.6);
+
+    nextNote += sps; step++;
+  }
+  setTimeout(scheduleLoop, 50);
+}
+
+// ── Dynamic mix update (every frame) ───────────────────────────────────────
+let last = performance.now();
+function uiTick(now){
+  const dt = Math.min(0.05, (now - (last||now))/1000); last = now;
+
+  if(!bossActive){
+    intensity = Math.max(0, intensity - DECAY*dt);
+    state = intensity > 0.08 ? 'Combat' : 'Explore';
+  }
+
+  // Combat layer gain follows intensity (adaptive layering)
+  const targetCmb = bossActive ? 0 : intensity * COMBAT_MAX;
+  cmbGain.gain.setTargetAtTime(targetCmb, ac.currentTime, 0.12);
+  bossGain.gain.setTargetAtTime(bossActive ? 0.85 : 0, ac.currentTime, 0.3);
+  expGain.gain.setTargetAtTime(bossActive ? 0 : 0.7, ac.currentTime, 0.4);
+
+  // Smooth display meters
+  disp.amb  += ((bossActive?0.2:0.4) - disp.amb)*0.1;
+  disp.exp  += ((bossActive?0:0.7) - disp.exp)*0.1;
+  disp.cmb  += (targetCmb - disp.cmb)*0.1;
+  disp.boss += ((bossActive?0.85:0) - disp.boss)*0.1;
+
+  setVU('amb', disp.amb); setVU('exp', disp.exp);
+  setVU('cmb', disp.cmb); setVU('boss', disp.boss);
+
+  const pct = Math.round(intensity*100);
+  document.getElementById('intensity-fill').style.width = (intensity*100)+'%';
+  document.getElementById('intensity-pct').textContent = pct+'%';
+  const chip = document.getElementById('statechip');
+  chip.textContent = bossActive ? 'Boss' : state;
+  chip.style.color = bossActive ? '#c08ad2' : (state==='Combat'?'#e23a3a':'#b49434');
+
+  requestAnimationFrame(uiTick);
+}
+function setVU(id, v){
+  document.getElementById('vu-'+id).style.width = Math.min(100, v*100)+'%';
+  document.getElementById('val-'+id).textContent = v.toFixed(2);
+}
+
+// ── Combat events ──────────────────────────────────────────────────────────
+function bump(a){ if(!bossActive) intensity = Math.min(1, intensity + a); }
+
+// A quick metallic SFX so the SFX bus is audible on actions.
+function clang(){
+  const t = ac.currentTime;
+  [880,1320,1760].forEach((f,i)=>{
+    const o=ac.createOscillator(); o.type='square'; o.frequency.value=f*(1+Math.random()*0.02);
+    const g=ac.createGain(); g.gain.setValueAtTime(0.0,t);
+    g.gain.linearRampToValueAtTime(0.12/(i+1), t+0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.25);
+    o.connect(g).connect(sfxBus); o.start(t); o.stop(t+0.3);
+  });
+}
+
+// ── Zone switching ─────────────────────────────────────────────────────────
+function setZone(key){
+  curZone = key; nextNote = ac.currentTime + 0.05; step = 0;
+  setReverbForZone(ZONES[key]);
+  document.querySelectorAll('.zone').forEach(b=>b.classList.toggle('active', b.dataset.z===key));
+}
+
+// ── UI wiring ──────────────────────────────────────────────────────────────
+function buildZones(){
+  const c = document.getElementById('zones');
+  ZONE_KEYS.forEach(k=>{
+    const z = ZONES[k];
+    const b = document.createElement('button');
+    b.className='zone'+(k===curZone?' active':''); b.dataset.z=k;
+    b.innerHTML = `${z.name}<small>${z.tempo} BPM · rev ${z.reverb}s</small>`;
+    b.onclick=()=>{ if(started) setZone(k); };
+    c.appendChild(b);
+  });
+}
+buildZones();
+
+document.getElementById('begin').addEventListener('click', ()=>{
+  if(started) return; started=true;
+  initAudio();
+  const g=document.getElementById('gate'); g.style.opacity=0; setTimeout(()=>g.style.display='none',600);
+});
+
+document.getElementById('atk').onclick  = ()=>{ if(started){bump(ATK_BUMP); clang();} };
+document.getElementById('hit').onclick  = ()=>{ if(started){bump(HIT_BUMP);} };
+document.getElementById('kill').onclick = ()=>{ if(started){bump(KILL_BUMP); clang();} };
+document.getElementById('boss').onclick = (e)=>{
+  if(!started) return;
+  bossActive = !bossActive; intensity = 0;
+  e.target.classList.toggle('on', bossActive);
+  e.target.textContent = bossActive ? '♛ End Boss' : '♛ Boss Fight';
+};
+
+function fader(id, busFn, vid, mul=1){
+  const el=document.getElementById(id), v=document.getElementById(vid);
+  el.addEventListener('input', ()=>{
+    v.textContent = Math.round(el.value*100);
+    if(started) busFn(parseFloat(el.value));
+  });
+}
+fader('f-master', x=>master.gain.setTargetAtTime(x,ac.currentTime,0.05), 'v-master');
+fader('f-music',  x=>musicBus.gain.setTargetAtTime(x,ac.currentTime,0.05), 'v-music');
+fader('f-sfx',    x=>sfxBus.gain.setTargetAtTime(x,ac.currentTime,0.05), 'v-sfx');
+
+// Keyboard: 1-5 zones, A/H/K events, B boss
+document.addEventListener('keydown', e=>{
+  if(!started) return;
+  const n = parseInt(e.key);
+  if(n>=1 && n<=5) setZone(ZONE_KEYS[n-1]);
+  if(e.key.toLowerCase()==='a'){ bump(ATK_BUMP); clang(); }
+  if(e.key.toLowerCase()==='h'){ bump(HIT_BUMP); }
+  if(e.key.toLowerCase()==='k'){ bump(KILL_BUMP); clang(); }
+  if(e.key.toLowerCase()==='b'){ document.getElementById('boss').click(); }
+});
+</script>
+</body>
+</html>
