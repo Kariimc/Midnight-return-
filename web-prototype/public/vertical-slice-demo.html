@@ -186,6 +186,9 @@ let abilityOrbs = [];
 // Lore pickups: {x, y, w, h, collected}
 let lorePickups = [];
 
+// Stat pickups: {x, y, r, bob, collected, room, apply}
+let statPickups = [];
+
 // Acquisition fanfare state
 let fanfare = null; // {phase, t, name, desc, barH, waitInput, done}
 let Time_frozen = false;
@@ -238,7 +241,7 @@ function reset(){
   resetEnemies();statue.used=false;statue._used=false;shots=[];particles=[];dust=[];
   boss=null; bossTriggered=false; airDashUnlocked=false; airDashes=0; airDashCd=0;
   doubleJumpUnlocked=false; P_djUsed=false;
-  gates=[]; abilityOrbs=[]; lorePickups=[]; fanfare=null; Time_frozen=false;
+  gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; fanfare=null; Time_frozen=false;
   initRoom1Gates();
 }
 
@@ -300,7 +303,7 @@ function startTransition(){
     P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;P.climbing=false;
     shots=[];particles=[];
     bossTriggered=false; boss=null;
-    gates=[]; abilityOrbs=[]; lorePickups=[]; fanfare=null; Time_frozen=false;
+    gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; fanfare=null; Time_frozen=false;
     initRoom2Gates();
     const ban=document.getElementById('banner');
     ban.textContent='Catacombs — Shattered Hall';
@@ -741,6 +744,12 @@ function initRoom1Gates(){
     color:'#44aaff',
     bob:0, collected:false, room:1
   });
+  // INT Fragment stat pickup at col 22 on the hidden platform
+  statPickups.push({
+    x:22*S+S/2, y:10*S-12,
+    r:7, bob:0, collected:false, room:1,
+    apply:(p)=>{ p.mmp+=15; p.mp=p.mmp; toast('✦ INT Fragment — MaxMP +15!'); }
+  });
 }
 
 function initRoom2Gates(){
@@ -1003,6 +1012,20 @@ function update(){
       lp.collected=true;
       toast('✦ Lore: "The Shadow King slept for a thousand years..."');
       addParticles(lp.x+lp.w/2,lp.y,'#ffcc44',20);
+    }
+  }
+
+  // Stat pickups
+  for(const sp of statPickups){
+    if(sp.collected||sp.room!==currentRoom)continue;
+    sp.bob=(sp.bob||0)+0.06;
+    const scx=sp.x, scy=sp.y+Math.sin(sp.bob)*4;
+    if(Math.abs((P.x+P.w/2)-scx)<sp.r+6&&Math.abs((P.y+P.h/2)-scy)<sp.r+6){
+      sp.collected=true;
+      screenFlash('rgba(220,170,20,0.5)',15);
+      shake=3;
+      addParticles(scx,scy,'#ffcc44',25);
+      sp.apply(P);
     }
   }
 
@@ -1287,6 +1310,43 @@ function draw(){
     x.strokeStyle=o.color+'88'; x.lineWidth=1;
     x.beginPath(); x.ellipse(o.x,oy,o.r*1.4,o.r*0.4,(o.bob||0)*0.5,0,Math.PI*2); x.stroke();
     x.restore();
+  }
+
+  // ── Stat pickup gems ─────────────────────────────────────────────────────
+  for(const sp of statPickups){
+    if(sp.collected||sp.room!==currentRoom)continue;
+    const spy=sp.y+Math.sin(sp.bob||0)*4;
+    x.save();
+    x.shadowColor='#ffcc44'; x.shadowBlur=16;
+    const gg=x.createRadialGradient(sp.x,spy,0,sp.x,spy,sp.r);
+    gg.addColorStop(0,'#fff8dd');
+    gg.addColorStop(0.45,'rgba(255,204,68,0.8)');
+    gg.addColorStop(1,'transparent');
+    x.fillStyle=gg; x.beginPath(); x.arc(sp.x,spy,sp.r,0,7); x.fill();
+    x.shadowBlur=0;
+    x.strokeStyle='rgba(255,238,136,0.7)'; x.lineWidth=1;
+    x.beginPath();
+    x.moveTo(sp.x,spy-sp.r); x.lineTo(sp.x+sp.r*0.65,spy);
+    x.lineTo(sp.x,spy+sp.r); x.lineTo(sp.x-sp.r*0.65,spy);
+    x.closePath(); x.stroke();
+    x.restore();
+  }
+
+  // ── Gate proximity hint ───────────────────────────────────────────────────
+  if(currentRoom===1&&!airDashUnlocked){
+    for(const g of gates){
+      if(g.type!=='spectral'||g.dissolved||g.room!==1)continue;
+      const dist=Math.abs((P.x+P.w/2)-(g.x+g.w/2));
+      if(dist<S*3.5){
+        const ha=(0.5+0.3*Math.sin(Date.now()/300))*(1-dist/(S*3.5));
+        x.save();
+        x.font='bold 9px monospace';
+        x.textAlign='center';
+        x.fillStyle=`rgba(180,130,255,${ha})`;
+        x.fillText('AIR DASH →', g.x+g.w/2, g.y-6);
+        x.restore();
+      }
+    }
   }
 
   // ── Hidden platforms (visible slabs) ─────────────────────────────────────

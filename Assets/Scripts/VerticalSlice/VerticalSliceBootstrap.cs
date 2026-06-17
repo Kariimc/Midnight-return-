@@ -155,6 +155,15 @@ namespace MidnightReturn.VerticalSlice
                 "Press Jump again while airborne to leap a second time.",
                 pm => pm.CanDoubleJump = true,
                 new Color(0.3f, 0.7f, 1f));
+
+            // INT Fragment on col 22 of the hidden platform — backtrack reward
+            BuildStatPickup(
+                new Vector3(
+                    VerticalSliceContent.ColX(22),
+                    VerticalSliceContent.SurfaceY(VerticalSliceContent.LEDGE_ROW) + 0.5f,
+                    0f),
+                "int_fragment",
+                pc => { pc.Stats.Int += 3; pc.Stats.MaxMp += 15; pc.Stats.Mp = pc.Stats.MaxMp; });
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -381,6 +390,37 @@ namespace MidnightReturn.VerticalSlice
             go.AddComponent<LorePickupTrigger>();
         }
 
+        private void BuildStatPickup(Vector3 pos, string itemId, System.Action<PlayerController> apply)
+        {
+            var go = new GameObject("StatPickup_" + itemId);
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            // Gold gem visual
+            var vis = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            vis.name = "Visual";
+            vis.transform.SetParent(go.transform, false);
+            vis.transform.localScale = Vector3.one * 0.3f;
+            var gold = new Color(0.9f, 0.7f, 0.1f);
+            var mat  = new Material(Shader.Find("HDRP/Lit") ?? Shader.Find("Standard"));
+            if (mat.HasProperty("_BaseColor"))     mat.SetColor("_BaseColor",     gold);
+            if (mat.HasProperty("_EmissiveColor")) mat.SetColor("_EmissiveColor", gold * 1.8f);
+            vis.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            if (vis.TryGetComponent<Collider>(out var vc)) Destroy(vc);
+
+            var light = go.AddComponent<Light>();
+            light.type = LightType.Point; light.range = 4f; light.intensity = 1.5f;
+            light.color = gold;
+
+            var sphere = go.AddComponent<SphereCollider>();
+            sphere.isTrigger = true;
+            sphere.radius    = 0.5f;
+
+            var trigger = go.AddComponent<StatPickupTrigger>();
+            trigger.DisplayText = itemId;
+            trigger.Apply       = apply;
+        }
+
         private void BuildBossTrigger()
         {
             // Placed at column 37 on the right floor — fires once when player crosses
@@ -512,6 +552,26 @@ namespace MidnightReturn.VerticalSlice
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
             if (m.HasProperty("_Color"))     m.SetColor("_Color", c);
             return m;
+        }
+    }
+
+    // One-shot stat pickup — applies a permanent stat delta to PlayerController, then dissolves.
+    internal sealed class StatPickupTrigger : MonoBehaviour
+    {
+        public string                       DisplayText;
+        public System.Action<PlayerController> Apply;
+
+        private bool _taken;
+        private void OnTriggerEnter(Collider other)
+        {
+            if (_taken || !other.CompareTag("Player")) return;
+            var pc = other.GetComponent<PlayerController>();
+            if (pc == null) return;
+            _taken = true;
+            Apply?.Invoke(pc);
+            EventBus.Emit(new ScreenFlashEvent { Color = new Color(0.9f, 0.7f, 0.1f, 0.45f), Duration = 0.3f });
+            EventBus.Emit(new ItemPickedUpEvent { ItemId = "stat_int_fragment", Quantity = 1 });
+            Destroy(gameObject);
         }
     }
 
