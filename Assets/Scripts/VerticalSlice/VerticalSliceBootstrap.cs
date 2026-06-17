@@ -219,6 +219,17 @@ namespace MidnightReturn.VerticalSlice
                     CatacombsContent.SurfaceY(3) + 0.5f,
                     0f));
 
+            // Iron Gate at the far-right exit: blocks the stub Room 3 passage.
+            // Requires Double Jump — player must backtrack to Room 1 after Air Dash.
+            BuildAbilityGate(
+                new Vector3(
+                    CatacombsContent.ColX(41),
+                    CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW) * 0.5f + 0.5f,
+                    0f),
+                GateType.IronGate,
+                RequiredAbility.DoubleJump,
+                new Vector3(0.3f, CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW) - 0.5f, 1f));
+
             RepositionPlayer(Room2SpawnPoint);
 
             RenderSettings.ambientLight = new Color(0.04f, 0.03f, 0.07f); // darker

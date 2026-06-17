@@ -760,6 +760,13 @@ function initRoom2Gates(){
     dissolved:false, dissolveT:0,
     room:2
   });
+  // Iron Gate at col 41 — blocks stub Room 3 exit, requires Double Jump
+  gates.push({
+    x:41*S, y:0, w:4, h:FLOOR_ROW*S,
+    type:'iron', req:'doubleJump',
+    dissolved:false, dissolveT:0,
+    room:2
+  });
   // Lore pickup on secret ledge (cols 14-17, row 3)
   lorePickups.push({
     x:16*S, y:3*S-16, w:12, h:16,
@@ -1376,6 +1383,16 @@ function draw(){
       lg.addColorStop(0,'#fff8dd'); lg.addColorStop(0.5,'#ffcc44aa'); lg.addColorStop(1,'transparent');
       x.fillStyle=lg; x.beginPath(); x.arc(lp.x+lp.w/2,lp.y+lp.h/2,8,0,7); x.fill();
       x.shadowBlur=0; x.restore();
+    }
+    // Stub Room 3 label — visible once Iron Gate at col 41 dissolves
+    const ironGate=gates.find(g=>g.type==='iron'&&g.room===2);
+    if(ironGate&&ironGate.dissolved){
+      x.save();
+      x.font='bold 8px monospace';
+      x.textAlign='center';
+      x.fillStyle='rgba(180,160,220,0.7)';
+      x.fillText('→ CLOCKTOWER', 42.5*S, FLOOR_ROW*S-8);
+      x.restore();
     }
   }
 
