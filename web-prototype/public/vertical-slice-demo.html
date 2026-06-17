@@ -136,6 +136,7 @@ function resetEnemies(){
   ];
 }
 resetEnemies();
+set(10,20,1);set(10,21,1);set(10,22,1);
 
 const statue={x:33*S,y:PLAT_ROW*S-28,r:38,used:false,glow:0};
 
@@ -169,6 +170,25 @@ let airDashUnlocked = false;
 let airDashes = 0;         // remaining air dashes this airtime
 let airDashCd = 0;         // cooldown frames
 const BOSS_TRIGGER_X = 36 * S; // player crosses this x in Room 2 to spawn boss
+
+// ── Ability gates ─────────────────────────────────────────────────────────────
+let doubleJumpUnlocked = false;
+let P_djUsed = false;  // double jump used this airtime
+
+// Gate objects: {x, y, w, h, type, req, dissolved, dissolveT}
+// type: 'spectral'|'iron'|'cracked'
+// req: 'airDash'|'doubleJump'
+let gates = [];
+
+// Ability pickup orbs: {x, y, r, ability, abilityName, desc, color, bob, collected}
+let abilityOrbs = [];
+
+// Lore pickups: {x, y, w, h, collected}
+let lorePickups = [];
+
+// Acquisition fanfare state
+let fanfare = null; // {phase, t, name, desc, barH, waitInput, done}
+let Time_frozen = false;
 
 // ── Physics helpers ──────────────────────────────────────────────────────────
 function moveAxis(ent,dx,dy){
@@ -209,6 +229,7 @@ function reset(){
   rect(FLOOR_ROW,PIT0,ROWS-1,PIT1,0);
   rect(LEDGE_ROW,LEDGE0,LEDGE_ROW,LEDGE1,1);
   rect(PLAT_ROW,PLAT0,PLAT_ROW,PLAT1,1);
+  set(10,20,1);set(10,21,1);set(10,22,1);
   spawnCur={x:spawn.x,y:spawn.y};
   ladderX0Cur=ladderX0;ladderX1Cur=ladderX1;
   ladderTopCur=ladderTop;ladderBotCur=ladderBot;
@@ -216,6 +237,9 @@ function reset(){
   P.x=spawn.x;P.y=spawn.y;P.vx=0;P.vy=0;P.hp=P.mhp;P.mp=P.mmp;P.iframes=0;P.climbing=false;
   resetEnemies();statue.used=false;statue._used=false;shots=[];particles=[];dust=[];
   boss=null; bossTriggered=false; airDashUnlocked=false; airDashes=0; airDashCd=0;
+  doubleJumpUnlocked=false; P_djUsed=false;
+  gates=[]; abilityOrbs=[]; lorePickups=[]; fanfare=null; Time_frozen=false;
+  initRoom1Gates();
 }
 
 // ── Room 2 (Catacombs) ───────────────────────────────────────────────────────
@@ -268,6 +292,7 @@ function startTransition(){
   setTimeout(()=>{
     currentRoom=2;
     buildRoom2Grid();
+    set(3,14,1);set(3,15,1);set(3,16,1);set(3,17,1);
     resetRoom2Enemies();
     spawnCur={x:R2.HIGH_X0*S+4,y:R2.HIGH_ROW*S-30};
     ladderX0Cur=-999;ladderX1Cur=-998;
@@ -275,6 +300,8 @@ function startTransition(){
     P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;P.climbing=false;
     shots=[];particles=[];
     bossTriggered=false; boss=null;
+    gates=[]; abilityOrbs=[]; lorePickups=[]; fanfare=null; Time_frozen=false;
+    initRoom2Gates();
     const ban=document.getElementById('banner');
     ban.textContent='Catacombs — Shattered Hall';
     ban.classList.remove('show');
@@ -695,8 +722,124 @@ const lCv=document.createElement('canvas');
 lCv.width=W; lCv.height=H;
 const lc=lCv.getContext('2d');
 
+// ── Ability gate + orb init ───────────────────────────────────────────────────
+function initRoom1Gates(){
+  // Spectral barrier between ledge (col 12) and hidden platform (col 20)
+  // Placed at col 14, spanning rows 8-11 (in the air above ledge level)
+  gates.push({
+    x:14*S, y:8*S, w:4, h:4*S,
+    type:'spectral', req:'airDash',
+    dissolved:false, dissolveT:0,
+    room:1
+  });
+  // Double Jump pickup orb on the hidden platform at cols 20-22, row 10
+  abilityOrbs.push({
+    x:21*S+4, y:10*S-24,
+    r:10, ability:'doubleJump',
+    abilityName:'Double Jump',
+    desc:'Press Jump again while airborne.',
+    color:'#44aaff',
+    bob:0, collected:false, room:1
+  });
+}
+
+function initRoom2Gates(){
+  // Cracked wall gate at col 13, rows 3-5 (above MID platform)
+  gates.push({
+    x:13*S, y:3*S, w:4, h:3*S,
+    type:'cracked', req:'doubleJump',
+    dissolved:false, dissolveT:0,
+    room:2
+  });
+  // Lore pickup on secret ledge (cols 14-17, row 3)
+  lorePickups.push({
+    x:16*S, y:3*S-16, w:12, h:16,
+    collected:false, room:2
+  });
+}
+
+// ── Fanfare system ─────────────────────────────────────────────────────────────
+function startFanfare(name, desc, onDone){
+  fanfare={phase:0,t:0,name,desc,barH:0,waitInput:false,done:false,onDone};
+  Time_frozen=true;
+}
+
+function updateFanfare(){
+  if(!fanfare||fanfare.done)return;
+  fanfare.t++;
+  if(fanfare.phase===0){
+    // Phase 0: 60 frames — flash pulse + header text fade
+    fanfare.flashA = fanfare.t<30 ? fanfare.t/30 : (60-fanfare.t)/30;
+    if(fanfare.t>=60){fanfare.phase=1;fanfare.t=0;}
+  } else if(fanfare.phase===1){
+    // Phase 1: bars slide in over 21 frames
+    fanfare.barH=Math.min(1,(fanfare.t/21));
+    if(fanfare.t>=21){fanfare.phase=2;fanfare.t=0;fanfare.waitInput=true;}
+  } else if(fanfare.phase===2){
+    // Phase 2: wait for any key (after 30 frame min)
+    if(fanfare.t>30 && (K['z']||K['space']||K['j']||K['k']||K['e']||K['x'])){
+      fanfare.phase=3;fanfare.t=0;fanfare.waitInput=false;
+    }
+  } else if(fanfare.phase===3){
+    // Phase 3: bars slide out over 15 frames
+    fanfare.barH=Math.max(0,1-fanfare.t/15);
+    if(fanfare.t>=15){
+      fanfare.done=true;Time_frozen=false;
+      fanfare.onDone?.();
+    }
+  }
+}
+
+function drawFanfare(){
+  if(!fanfare||fanfare.done)return;
+  const BAR=60; // bar height in pixels
+
+  // Flash overlay (phase 0)
+  if(fanfare.phase===0){
+    x.save();
+    x.globalAlpha=(fanfare.flashA||0)*0.8;
+    x.fillStyle='rgba(100,40,200,1)';
+    x.fillRect(0,0,W,H);
+    x.restore();
+    // "POWER ACQUIRED" text
+    x.save();
+    const a2=Math.min(1,fanfare.t/30)*((60-fanfare.t)/30)*2;
+    x.globalAlpha=Math.max(0,a2);
+    x.fillStyle='rgba(230,210,255,0.95)';
+    x.font='bold 20px monospace'; x.textAlign='center';
+    x.fillText('POWER ACQUIRED',W/2,H/2-12);
+    x.font='bold 26px monospace';
+    x.fillStyle='rgba(150,220,255,0.95)';
+    x.fillText(fanfare.name.toUpperCase(),W/2,H/2+16);
+    x.textAlign='left'; x.restore();
+  }
+
+  // Black bars (phases 1-3)
+  if(fanfare.phase>=1){
+    const bh=Math.round((fanfare.barH||0)*BAR);
+    x.fillStyle='rgba(5,2,12,0.97)';
+    x.fillRect(0,0,W,bh);            // top bar
+    x.fillRect(0,H-bh,W,bh);         // bottom bar
+    if(fanfare.phase===2){
+      // Text inside bars
+      x.save();
+      x.fillStyle='rgba(200,190,220,0.95)'; x.font='bold 12px monospace'; x.textAlign='center';
+      x.fillText(fanfare.name.toUpperCase(), W/2, bh/2+4);
+      x.fillStyle='rgba(160,150,185,0.85)'; x.font='10px monospace';
+      x.fillText(fanfare.desc, W/2, H-bh/2+4);
+      if(fanfare.t>30){
+        x.fillStyle='rgba(110,100,135,0.7)'; x.font='9px monospace';
+        x.fillText('[ Press any button ]', W/2, H-bh/2+18);
+      }
+      x.textAlign='left'; x.restore();
+    }
+  }
+}
+
 // ── Update ───────────────────────────────────────────────────────────────────
 function update(){
+  updateFanfare();
+  if(Time_frozen)return;
   if(hitstop>0){hitstop--;return;}
   if(K['r']){reset();K['r']=false;}
 
@@ -725,9 +868,19 @@ function update(){
     // jump (variable height + coyote)
     P.coyote = P.grounded?6:Math.max(0,P.coyote-1);
     const jp=K['z']||K['space'];
-    if(jp&&!P.jumpHeld&&(P.grounded||P.coyote>0)){P.vy=-6.6;P.jumpHeld=true;P.jumpT=12;P.coyote=0;}
+    // Ground/coyote jump
+    if(jp&&!P.jumpHeld&&(P.grounded||P.coyote>0)){
+      P.vy=-6.6;P.jumpHeld=true;P.jumpT=12;P.coyote=0;P_djUsed=false;
+    }
+    // Double jump
+    else if(jp&&!P.jumpHeld&&!P.grounded&&doubleJumpUnlocked&&!P_djUsed&&P.coyote<=0){
+      P.vy=-5.8;P.jumpHeld=true;P.jumpT=9;P_djUsed=true;
+      addParticles(P.x+P.w/2,P.y+P.h/2,'#44aaff',12);
+    }
     if(!jp)P.jumpHeld=false;
     if(P.jumpHeld){P.jumpT--; if(!jp||P.jumpT<=0){if(P.vy<0)P.vy*=0.5;P.jumpHeld=false;}}
+    // Reset double jump on landing
+    if(P.grounded)P_djUsed=false;
     P.vy=Math.min(P.vy+0.45,9); // gravity / terminal
     moveAxis(P,P.vx,0); moveAxis(P,0,P.vy);
     // Air dash [X]
@@ -806,6 +959,52 @@ function update(){
   }
   // Boss update
   updateBoss();
+
+  // Ability gates
+  for(const g of gates){
+    if(g.dissolved||g.room!==currentRoom)continue;
+    if(g.dissolveT>0){g.dissolveT--;if(g.dissolveT<=0)g.dissolved=true;continue;}
+    // Check if player is touching gate
+    if(P.x<g.x+g.w&&P.x+P.w>g.x&&P.y<g.y+g.h&&P.y+P.h>g.y){
+      const hasReq=(g.req==='airDash'&&airDashUnlocked)||(g.req==='doubleJump'&&doubleJumpUnlocked);
+      if(hasReq){
+        g.dissolveT=30; // 0.5s dissolve
+        shake=3;
+        addParticles(g.x+g.w/2,g.y+g.h/2,g.type==='spectral'?'#8844ff':'#aa8844',20);
+      } else {
+        // Bounce player back (solid wall behavior)
+        if(P.vx>0&&P.x+P.w>g.x)P.x=g.x-P.w;
+        else if(P.vx<0&&P.x<g.x+g.w)P.x=g.x+g.w;
+        P.vx=0;
+      }
+    }
+  }
+
+  // Ability orbs
+  for(const o of abilityOrbs){
+    if(o.collected||o.room!==currentRoom)continue;
+    o.bob+=0.08;
+    const cx=o.x,cy=o.y+Math.sin(o.bob)*5;
+    if(Math.abs((P.x+P.w/2)-cx)<o.r+6&&Math.abs((P.y+P.h/2)-cy)<o.r+6){
+      o.collected=true;
+      shake=4;
+      addParticles(cx,cy,'#44aaff',30);
+      startFanfare(o.abilityName, o.desc, ()=>{
+        if(o.ability==='doubleJump') doubleJumpUnlocked=true;
+        toast('✦ '+o.abilityName+' — now available!');
+      });
+    }
+  }
+
+  // Lore pickups
+  for(const lp of lorePickups){
+    if(lp.collected||lp.room!==currentRoom)continue;
+    if(P.x<lp.x+lp.w&&P.x+P.w>lp.x&&P.y<lp.y+lp.h&&P.y+P.h>lp.y){
+      lp.collected=true;
+      toast('✦ Lore: "The Shadow King slept for a thousand years..."');
+      addParticles(lp.x+lp.w/2,lp.y,'#ffcc44',20);
+    }
+  }
 
   // statue (Room 1 only)
   if(currentRoom===1){
@@ -1030,6 +1229,96 @@ function draw(){
   }
   drawBoss();
 
+  // ── LAYER 7b: Ability gates ───────────────────────────────────────────────
+  for(const g of gates){
+    if(g.room!==currentRoom)continue;
+    const a=g.dissolved?0:g.dissolveT>0?g.dissolveT/30:1;
+    if(a<=0)continue;
+    x.save(); x.globalAlpha=a;
+    if(g.type==='spectral'){
+      const gg=x.createLinearGradient(g.x,g.y,g.x+g.w,g.y+g.h);
+      gg.addColorStop(0,'rgba(80,30,180,0.7)');
+      gg.addColorStop(0.5,'rgba(140,80,255,0.85)');
+      gg.addColorStop(1,'rgba(80,30,180,0.7)');
+      x.fillStyle=gg; x.fillRect(g.x,g.y,g.w,g.h);
+      // Shimmer lines
+      x.strokeStyle='rgba(200,160,255,0.4)'; x.lineWidth=1;
+      for(let yy=g.y+4;yy<g.y+g.h;yy+=8){
+        x.beginPath();x.moveTo(g.x,yy);x.lineTo(g.x+g.w,yy+Math.sin(Date.now()/200+yy)*2);x.stroke();
+      }
+      x.shadowColor='rgba(120,60,255,0.8)'; x.shadowBlur=12;
+      x.strokeStyle='rgba(180,120,255,0.6)'; x.lineWidth=2;
+      x.strokeRect(g.x,g.y,g.w,g.h);
+      x.shadowBlur=0;
+    } else if(g.type==='iron'){
+      x.fillStyle='rgba(30,25,20,0.95)'; x.fillRect(g.x,g.y,g.w,g.h);
+      // Bars
+      x.fillStyle='rgba(60,50,40,0.9)';
+      for(let yy=g.y;yy<g.y+g.h;yy+=12){ x.fillRect(g.x,yy,g.w,4); }
+      x.strokeStyle='#3a3020'; x.lineWidth=1; x.strokeRect(g.x,g.y,g.w,g.h);
+    } else { // cracked
+      x.fillStyle='rgba(60,50,46,0.95)'; x.fillRect(g.x,g.y,g.w,g.h);
+      // Crack lines
+      x.strokeStyle='rgba(0,0,0,0.7)'; x.lineWidth=1.5;
+      x.beginPath();
+      x.moveTo(g.x+1,g.y+4); x.lineTo(g.x+3,g.y+g.h*0.4);
+      x.lineTo(g.x+1,g.y+g.h*0.7); x.lineTo(g.x+3,g.y+g.h-4);
+      x.stroke();
+      x.beginPath();
+      x.moveTo(g.x,g.y+g.h*0.35); x.lineTo(g.x+g.w,g.y+g.h*0.45);
+      x.stroke();
+    }
+    x.restore();
+  }
+
+  // ── Ability orbs ─────────────────────────────────────────────────────────
+  for(const o of abilityOrbs){
+    if(o.collected||o.room!==currentRoom)continue;
+    const oy=o.y+Math.sin(o.bob||0)*5;
+    x.save();
+    x.shadowColor=o.color; x.shadowBlur=18;
+    const og=x.createRadialGradient(o.x,oy,0,o.x,oy,o.r);
+    og.addColorStop(0,'rgba(255,255,255,0.9)');
+    og.addColorStop(0.4,o.color+'dd');
+    og.addColorStop(1,'transparent');
+    x.fillStyle=og; x.beginPath(); x.arc(o.x,oy,o.r,0,7); x.fill();
+    x.shadowBlur=0;
+    // Orbit ring
+    x.strokeStyle=o.color+'88'; x.lineWidth=1;
+    x.beginPath(); x.ellipse(o.x,oy,o.r*1.4,o.r*0.4,(o.bob||0)*0.5,0,Math.PI*2); x.stroke();
+    x.restore();
+  }
+
+  // ── Hidden platforms (visible slabs) ─────────────────────────────────────
+  if(currentRoom===1){
+    // Hidden platform at cols 20-22, row 10 (inside pit)
+    for(let c=20;c<=22;c++){
+      if(grid[10][c]===1){
+        x.drawImage(STONE_VARS[tileVar(10,c)],c*S,10*S,S,S);
+        x.fillStyle='rgba(255,255,255,0.12)'; x.fillRect(c*S,10*S,S,2);
+      }
+    }
+  }
+  if(currentRoom===2){
+    // Secret ledge at cols 14-17, row 3
+    for(let c=14;c<=17;c++){
+      if(grid[3][c]===1){
+        x.drawImage(STONE_VARS[tileVar(3,c)],c*S,3*S,S,S);
+        x.fillStyle='rgba(255,255,255,0.12)'; x.fillRect(c*S,3*S,S,2);
+      }
+    }
+    // Lore pickups
+    for(const lp of lorePickups){
+      if(lp.collected||lp.room!==currentRoom)continue;
+      x.save();
+      x.shadowColor='#ffcc44'; x.shadowBlur=14;
+      const lg=x.createRadialGradient(lp.x+lp.w/2,lp.y+lp.h/2,0,lp.x+lp.w/2,lp.y+lp.h/2,8);
+      lg.addColorStop(0,'#fff8dd'); lg.addColorStop(0.5,'#ffcc44aa'); lg.addColorStop(1,'transparent');
+      x.fillStyle=lg; x.beginPath(); x.arc(lp.x+lp.w/2,lp.y+lp.h/2,8,0,7); x.fill();
+      x.shadowBlur=0; x.restore();
+    }
+  }
+
   // ── LAYER 8: Player ─────────────────────────────────────────────────────
   x.save();
   if(P.iframes>0&&Math.floor(P.iframes/4)%2)x.globalAlpha=.35;
@@ -1111,6 +1400,9 @@ function draw(){
   x.fillStyle='rgba(20,10,40,0.08)';
   x.fillRect(0,0,W,H);
 
+  // Fanfare overlay (topmost)
+  drawFanfare();
+
   x.setTransform(1,0,0,1,0,0);
 }
 
@@ -1132,6 +1424,7 @@ function loop(){
   hud();
   requestAnimationFrame(loop);
 }
+initRoom1Gates();
 document.getElementById('banner').classList.add('show');
 loop();
 </script>

@@ -4,6 +4,7 @@ using UnityEngine;
 using MidnightReturn.Data;
 using MidnightReturn.Level;
 using MidnightReturn.Map;
+using MidnightReturn.Player;
 using MidnightReturn.Enemies.Types;
 using MidnightReturn.Utils;
 
@@ -124,6 +125,36 @@ namespace MidnightReturn.VerticalSlice
                 new Vector3((VerticalSliceContent.W - 1) * VerticalSliceContent.TILE - 0.15f,
                              VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW) * 0.5f, 0f),
                 VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW));
+
+            // Ability gate shortcut: Air Dash barrier between ledge and hidden platform.
+            // Player on ledge → air-dashes past spectral barrier → discovers Double Jump.
+            BuildAbilityGate(
+                new Vector3(
+                    VerticalSliceContent.ColX(14),
+                    VerticalSliceContent.SurfaceY(VerticalSliceContent.LEDGE_ROW) + 1.5f,
+                    0f),
+                GateType.Spectral,
+                RequiredAbility.AirDash,
+                new Vector3(0.3f, 4f, 1f));
+
+            // Hidden floating platform inside the pit area (same elevation as the ledge)
+            BuildHiddenPlatform(
+                new Vector3(
+                    VerticalSliceContent.ColX(20),
+                    VerticalSliceContent.SurfaceY(VerticalSliceContent.LEDGE_ROW),
+                    0f),
+                width: 3f);
+
+            // Double Jump pickup on the hidden platform
+            BuildAbilityPickup(
+                new Vector3(
+                    VerticalSliceContent.ColX(21),
+                    VerticalSliceContent.SurfaceY(VerticalSliceContent.LEDGE_ROW) + 0.8f,
+                    0f),
+                "Double Jump",
+                "Press Jump again while airborne to leap a second time.",
+                pm => pm.CanDoubleJump = true,
+                new Color(0.3f, 0.7f, 1f));
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -153,6 +184,31 @@ namespace MidnightReturn.VerticalSlice
                 new Color(0.65f, 0.3f, 0.8f));
 
             BuildBossTrigger();
+
+            // Cracked wall gate: requires Double Jump to reach the secret ledge above
+            BuildAbilityGate(
+                new Vector3(
+                    CatacombsContent.ColX(13),
+                    CatacombsContent.SurfaceY(3) + 1f,
+                    0f),
+                GateType.CrackedWall,
+                RequiredAbility.DoubleJump,
+                new Vector3(0.3f, 3.5f, 1f));
+
+            // Secret ledge above the cracked wall (cols 14-17, row 3)
+            BuildHiddenPlatform(
+                new Vector3(
+                    CatacombsContent.ColX(14),
+                    CatacombsContent.SurfaceY(3),
+                    0f),
+                width: 4f);
+
+            // Lore item on the secret ledge — just an ItemPickedUpEvent placeholder
+            BuildLorePickup(
+                new Vector3(
+                    CatacombsContent.ColX(16),
+                    CatacombsContent.SurfaceY(3) + 0.5f,
+                    0f));
 
             RepositionPlayer(Room2SpawnPoint);
 
@@ -261,6 +317,68 @@ namespace MidnightReturn.VerticalSlice
             box.size = new Vector3(1f, yTop - yBottom, 1f);
 
             go.AddComponent<ClimbableVolume>();
+        }
+
+        private void BuildAbilityGate(Vector3 pos, GateType gType, RequiredAbility req, Vector3 size)
+        {
+            var go = new GameObject($"AbilityGate_{gType}");
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+            go.AddComponent<BoxCollider>(); // AbilityGate.Start() configures this
+            var gate = go.AddComponent<AbilityGate>();
+            gate.Configure(gType, req, size);
+        }
+
+        private void BuildHiddenPlatform(Vector3 leftEdgePos, float width)
+        {
+            var go = new GameObject("HiddenPlatform");
+            go.transform.position = leftEdgePos;
+            _room1Objects.Add(go);
+
+            var box = go.AddComponent<BoxCollider>();
+            box.size   = new Vector3(width, 0.2f, 1.2f);
+            box.center = new Vector3(width * 0.5f, 0f, 0f);
+
+            var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            vis.name = "Visual";
+            vis.transform.SetParent(go.transform, false);
+            vis.transform.localScale    = new Vector3(width, 0.22f, 0.9f);
+            vis.transform.localPosition = new Vector3(width * 0.5f, 0f, 0f);
+            if (vis.TryGetComponent<Collider>(out var c)) Destroy(c);
+            vis.GetComponent<MeshRenderer>().sharedMaterial = LitMaterial(new Color(0.38f, 0.35f, 0.44f));
+        }
+
+        private void BuildAbilityPickup(
+            Vector3 pos, string name, string desc,
+            System.Action<PlayerMovement> grant, Color color)
+        {
+            var go = new GameObject("AbilityPickup_" + name);
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+            go.tag = "Untagged";
+            go.AddComponent<SphereCollider>(); // AbilityPickup.Init() configures this
+            var pickup = go.AddComponent<AbilityPickup>();
+            pickup.Init(name, desc, grant, color);
+        }
+
+        private void BuildLorePickup(Vector3 pos)
+        {
+            // Placeholder: a glowing cube that emits ItemPickedUpEvent when touched
+            var go = new GameObject("LorePickup");
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            vis.name = "Visual";
+            vis.transform.SetParent(go.transform, false);
+            vis.transform.localScale = Vector3.one * 0.35f;
+            var mat = new Material(Shader.Find("HDRP/Lit") ?? Shader.Find("Standard"));
+            if (mat.HasProperty("_BaseColor"))     mat.SetColor("_BaseColor",     new Color(0.9f, 0.7f, 0.2f));
+            if (mat.HasProperty("_EmissiveColor")) mat.SetColor("_EmissiveColor", new Color(0.7f, 0.5f, 0.1f));
+            vis.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            if (vis.TryGetComponent<Collider>(out var vc)) { vc.isTrigger = true; }
+
+            go.AddComponent<LorePickupTrigger>();
         }
 
         private void BuildBossTrigger()
@@ -394,6 +512,19 @@ namespace MidnightReturn.VerticalSlice
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
             if (m.HasProperty("_Color"))     m.SetColor("_Color", c);
             return m;
+        }
+    }
+
+    // One-shot lore pickup trigger — fires ItemPickedUpEvent then destroys itself.
+    internal sealed class LorePickupTrigger : MonoBehaviour
+    {
+        private bool _taken;
+        private void OnTriggerEnter(Collider other)
+        {
+            if (_taken || !other.CompareTag("Player")) return;
+            _taken = true;
+            EventBus.Emit(new ItemPickedUpEvent { ItemId = "lore_shadow_king", Quantity = 1 });
+            Destroy(gameObject);
         }
     }
 }
