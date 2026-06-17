@@ -193,3 +193,8 @@ Level-up: random stat growth with variance, full HP/MP restore
   - TileChunkBuilder.cs — Configure(TileSetSO, TilemapLayerSO) runtime injection
   - Assets/VerticalSlice/SETUP.md — scene wiring + the pixel→world-unit EnemyDataSO tuning finding
   - web-prototype/public/vertical-slice-demo.html — fully playable canvas build of the room: patrol/chase enemies, pit jump, ladder climb, save statue, top-left HUD, attack + sub-weapon, level-ups (← → move, ↑↓ climb, Z/Space jump, J attack, K sub-weapon, E save)
+- [x] AAA Texture Pipeline: PBR material infrastructure + visual overhaul
+  - HDRPTileMaterial.cs — static factory: BuildStoneMaterial/BuildBrickMaterial/BuildMetalMaterial each wire BaseColorMap+NormalMap+MaskMap (HDRP R=Metallic G=AO B=DetailMask A=Smoothness) with keyword enabling; shader fallback chain HDRP/Lit→URP/Lit→Standard
+  - VerticalSliceBootstrap.cs — expanded: separate stone (6 PBR slots) + brick Inspector headers; TileMaterial() PBR path via HDRPTileMaterial; BrickMaterial() for bg layer; MainLayer baked before BG layer with independent materials
+  - Assets/Art/Textures/README.md — texture pack guide: Polyhaven/AmbientCG CC0 packs, MaskMap packing (R/G/B/A channels), Unity import settings, file layout, tiling scale recommendations
+  - web-prototype/public/vertical-slice-demo.html — VISUAL OVERHAUL (387→714 lines): 8 procedural seeded stone tile variants (LCG noise+cracks), Gothic brick background pattern, animated torch sconces (triple-ellipse flame), dynamic lighting canvas (multiply composite, radial gradient punch-holes), Gothic column parallax, ornate iron ladder, particle system (hits/deaths/ambient dust), 11-layer draw pipeline, color grade overlay

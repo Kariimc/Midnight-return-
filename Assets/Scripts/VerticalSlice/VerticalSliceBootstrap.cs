@@ -26,10 +26,23 @@ namespace MidnightReturn.VerticalSlice
     // ══════════════════════════════════════════════════════════════════════════
     public sealed class VerticalSliceBootstrap : MonoBehaviour
     {
-        [Header("Tile Rendering (optional — falls back to a flat lit material)")]
-        [Tooltip("8×8 tile atlas. If unset, tiles render as a flat stone colour.")]
+        [Header("Tile Textures — Stone floor/platforms (optional, PBR HDRP/Lit)")]
+        [Tooltip("BaseColor atlas for stone floor tiles. Polyhaven: cobblestone_floor_08_diff_2k.")]
+        [SerializeField] private Texture2D _stoneBaseColor;
+        [Tooltip("Normal map (GL convention). Polyhaven: cobblestone_floor_08_nor_gl_2k.")]
+        [SerializeField] private Texture2D _stoneNormalMap;
+        [Tooltip("HDRP MaskMap (R=Metallic G=AO B=Detail A=Smoothness).")]
+        [SerializeField] private Texture2D _stoneMaskMap;
+
+        [Header("Tile Textures — Brick walls/ceiling (optional)")]
+        [SerializeField] private Texture2D _brickBaseColor;
+        [SerializeField] private Texture2D _brickNormalMap;
+        [SerializeField] private Texture2D _brickMaskMap;
+
+        [Header("Tile Rendering (legacy — overrides PBR if set)")]
+        [Tooltip("8×8 tile atlas. If set, overrides the individual PBR texture slots.")]
         [SerializeField] private Texture2D _tileAtlas;
-        [Tooltip("Override material for tiles. If unset, one is created at runtime.")]
+        [Tooltip("Full material override. Takes priority over all texture slots.")]
         [SerializeField] private Material  _tileMaterial;
 
         [Header("Enemies")]
@@ -67,9 +80,14 @@ namespace MidnightReturn.VerticalSlice
         // ── 1. Tilemap ────────────────────────────────────────────────────────
         private void BuildTilemap()
         {
-            var set = VerticalSliceContent.BuildTileSet(_tileAtlas, TileMaterial());
-            BakeLayer("TileLayer_BG",   VerticalSliceContent.BuildBackgroundLayer(), set);
-            BakeLayer("TileLayer_Main", VerticalSliceContent.BuildMainLayer(),       set);
+            // Main layer (floor, walls, platforms) — full PBR stone material
+            var mainSet = VerticalSliceContent.BuildTileSet(_tileAtlas, TileMaterial());
+            BakeLayer("TileLayer_Main", VerticalSliceContent.BuildMainLayer(), mainSet);
+
+            // Background layer — separate brick material (darker, no collision)
+            var bgAtlas = _brickBaseColor != null ? _brickBaseColor : _tileAtlas;
+            var bgSet   = VerticalSliceContent.BuildTileSet(bgAtlas, BrickMaterial());
+            BakeLayer("TileLayer_BG", VerticalSliceContent.BuildBackgroundLayer(), bgSet);
         }
 
         private void BakeLayer(string name, TilemapLayerSO layer, TileSetSO set)
@@ -179,10 +197,29 @@ namespace MidnightReturn.VerticalSlice
         private Material TileMaterial()
         {
             if (_tileMaterial != null) return _tileMaterial;
-            var m = LitMaterial(new Color(0.4f, 0.38f, 0.45f));
-            if (_tileAtlas != null && m.HasProperty("_BaseColorMap"))
-                m.SetTexture("_BaseColorMap", _tileAtlas);
-            return m;
+
+            // Full-override atlas (legacy path)
+            if (_tileAtlas != null)
+            {
+                var m = LitMaterial(Color.white);
+                if (m.HasProperty("_BaseColorMap")) m.SetTexture("_BaseColorMap", _tileAtlas);
+                return m;
+            }
+
+            // PBR path — HDRPTileMaterial handles shader detection + keyword setup
+            if (_stoneBaseColor != null || _stoneNormalMap != null || _stoneMaskMap != null)
+                return HDRPTileMaterial.BuildStoneMaterial(_stoneBaseColor, _stoneNormalMap, _stoneMaskMap);
+
+            // Flat fallback: stone-grey procedural material
+            return LitMaterial(new Color(0.4f, 0.38f, 0.45f));
+        }
+
+        // Separate material for background brick layer.
+        private Material BrickMaterial()
+        {
+            if (_brickBaseColor != null || _brickNormalMap != null || _brickMaskMap != null)
+                return HDRPTileMaterial.BuildBrickMaterial(_brickBaseColor, _brickNormalMap, _brickMaskMap);
+            return LitMaterial(new Color(0.14f, 0.12f, 0.18f));
         }
 
         private static Material LitMaterial(Color c)
