@@ -72,6 +72,11 @@ namespace MidnightReturn.VerticalSlice
             CatacombsContent.SurfaceY(CatacombsContent.HIGH_PLAT_ROW) + 0.2f,
             0f);
 
+        private Vector3 Room3SpawnPoint => new(
+            ClocktowerContent.ColX(ClocktowerContent.SPAWN_COL),
+            ClocktowerContent.SurfaceY(ClocktowerContent.FLOOR_TOP_ROW) + 0.2f,
+            0f);
+
         // ── Lifecycle ─────────────────────────────────────────────────────────
         private void Start()
         {
@@ -121,10 +126,12 @@ namespace MidnightReturn.VerticalSlice
                         VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW),
                         VerticalSliceContent.SurfaceY(VerticalSliceContent.PLAT_ROW));
 
-            BuildExitDoor(
+            // Door starts locked — unlocked when all Room 1 enemies die.
+            BuildExitDoor("ExitDoor_Room1",
                 new Vector3((VerticalSliceContent.W - 1) * VerticalSliceContent.TILE - 0.15f,
                              VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW) * 0.5f, 0f),
-                VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW));
+                VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW),
+                SwitchToRoom2, startUnlocked: false);
 
             // Ability gate shortcut: Air Dash barrier between ledge and hidden platform.
             // Player on ledge → air-dashes past spectral barrier → discovers Double Jump.
@@ -273,7 +280,7 @@ namespace MidnightReturn.VerticalSlice
                             0f),
                 new Vector3(0.3f, 2.5f, 1f));
 
-            // Iron Gate at the far-right exit: blocks the stub Room 3 passage.
+            // Iron Gate at the far-right exit: blocks the Clocktower passage.
             // Requires Double Jump — player must backtrack to Room 1 after Air Dash.
             BuildAbilityGate(
                 new Vector3(
@@ -284,12 +291,58 @@ namespace MidnightReturn.VerticalSlice
                 RequiredAbility.DoubleJump,
                 new Vector3(0.3f, CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW) - 0.5f, 1f));
 
+            // Exit door BEHIND the iron gate (col 42) → Clocktower. Starts unlocked;
+            // the iron gate is the real barrier, so the player can only reach this
+            // door once Double Jump has dissolved the gate.
+            BuildExitDoor("ExitDoor_Room2",
+                new Vector3((CatacombsContent.W - 1) * CatacombsContent.TILE - 0.15f,
+                             CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW) * 0.5f, 0f),
+                CatacombsContent.SurfaceY(CatacombsContent.FLOOR_TOP_ROW),
+                SwitchToRoom3, startUnlocked: true);
+
             RepositionPlayer(Room2SpawnPoint);
 
             RenderSettings.ambientLight = new Color(0.04f, 0.03f, 0.07f); // darker
             StartCoroutine(KickRoomEvent("catacombs_shattered_hall",
                                           "Catacombs — Shattered Hall",
                                           ZoneType.Catacombs));
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  Room 3 — Clocktower: Gearworks Ascent
+        // ══════════════════════════════════════════════════════════════════════
+        private void SwitchToRoom3()
+        {
+            // Tear down Room 2
+            foreach (var go in _room1Objects)
+                if (go) Destroy(go);
+            _room1Objects.Clear();
+            _room1EnemyIds.Clear();
+            _room1EnemiesAlive = 0;
+
+            // Build Room 3
+            BuildTilemap(ClocktowerContent.BuildMainLayer(),
+                         ClocktowerContent.BuildBackgroundLayer(),
+                         "Room3");
+
+            // Gear Golem — heavy patroller on platform B
+            SpawnPatrol(ClocktowerContent.BuildGearGolem(),
+                new Vector3(ClocktowerContent.ColX(17),
+                            ClocktowerContent.SurfaceY(ClocktowerContent.PLAT_B_ROW) + 0.1f, 0f),
+                new Color(0.8f, 0.5f, 0.15f));
+
+            // Vampire Bat — flyer haunting the central shaft
+            SpawnFlying(ClocktowerContent.BuildVampireBat(),
+                new Vector3(ClocktowerContent.ColX(ClocktowerContent.PENDULUM_COL),
+                            ClocktowerContent.SurfaceY(ClocktowerContent.PLAT_C_ROW) + 2f, 0f),
+                new Color(0.45f, 0.05f, 0.08f));
+
+            RepositionPlayer(Room3SpawnPoint);
+
+            RenderSettings.ambientLight = new Color(0.06f, 0.06f, 0.09f); // cold mechanical
+            StartCoroutine(KickRoomEvent("clocktower_gearworks_ascent",
+                                          "Clocktower — Gearworks Ascent",
+                                          ZoneType.Clocktower));
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -355,6 +408,33 @@ namespace MidnightReturn.VerticalSlice
 
             // Register for kill tracking (Room 1 and Room 2 enemies share the same tracker;
             // Room 2 enemies don't gate anything so the unlocked door is a no-op).
+            _room1EnemyIds.Add(data.EnemyId);
+            _room1EnemiesAlive++;
+        }
+
+        private void SpawnFlying(EnemyDataSO data, Vector3 pos, Color tint)
+        {
+            var go = new GameObject("Enemy_" + data.EnemyId) { layer = _enemyLayer };
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            // Flyers still need a CharacterController for EnemyBase, but ignore gravity
+            var cc = go.AddComponent<CharacterController>();
+            cc.height = 1.0f; cc.radius = 0.45f; cc.center = new Vector3(0f, 0.5f, 0f);
+
+            var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            vis.name = "Visual";
+            vis.layer = _enemyLayer;
+            vis.transform.SetParent(go.transform, false);
+            vis.transform.localScale    = new Vector3(0.7f, 0.5f, 0.4f);
+            vis.transform.localPosition = new Vector3(0f, 0.5f, 0f);
+            var primCol = vis.GetComponent<Collider>();
+            if (primCol) Destroy(primCol);
+            vis.GetComponent<MeshRenderer>().sharedMaterial = LitMaterial(tint);
+
+            var enemy = go.AddComponent<FlyingEnemy>();
+            enemy.Configure(data);
+
             _room1EnemyIds.Add(data.EnemyId);
             _room1EnemiesAlive++;
         }
@@ -596,9 +676,10 @@ namespace MidnightReturn.VerticalSlice
             go.AddComponent<PhaseableWall>();
         }
 
-        private void BuildExitDoor(Vector3 pos, float wallHeight)
+        private void BuildExitDoor(string name, Vector3 pos, float wallHeight,
+                                   System.Action onMidpoint, bool startUnlocked)
         {
-            var go = new GameObject("ExitDoor_Room1");
+            var go = new GameObject(name);
             go.transform.position = pos;
             _room1Objects.Add(go);
 
@@ -607,8 +688,8 @@ namespace MidnightReturn.VerticalSlice
             box.size = new Vector3(1.2f, wallHeight, 1f);
 
             _exitDoor = go.AddComponent<ProceduralRoomTransition>();
-            _exitDoor.OnMidpoint = SwitchToRoom2;
-            // Door starts locked — unlocked when all Room 1 enemies die.
+            _exitDoor.OnMidpoint = onMidpoint;
+            if (startUnlocked) _exitDoor.Unlock();
         }
 
         // ── Room event emission ───────────────────────────────────────────────

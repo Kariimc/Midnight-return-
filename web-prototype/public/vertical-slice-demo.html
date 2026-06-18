@@ -256,7 +256,7 @@ set(10,20,1);set(10,21,1);set(10,22,1);set(10,23,1);set(10,24,1);
   boss=null; bossTriggered=false; airDashUnlocked=false; airDashes=0; airDashCd=0;
   doubleJumpUnlocked=false; P_djUsed=false;
   soulTetherUnlocked=false; wraithStepUnlocked=false;
-  tether=null; P.wraith=0;
+  tether=null; P.wraith=0; pendulum=null;
   gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
   fanfare=null; Time_frozen=false;
   initRoom1Gates();
@@ -330,6 +330,93 @@ function startTransition(){
     fade.style.opacity='0';
     setTimeout(()=>{transitioning=false;},320);
   },320);
+}
+
+// ── Room 3 (Clocktower) ───────────────────────────────────────────────────────
+const R3={
+  A_ROW:11, A_X0:2,  A_X1:9,
+  B_ROW:8,  B_X0:13, B_X1:21,
+  C_ROW:5,  C_X0:24, C_X1:31,
+  TOP_ROW:2, TOP_X0:34, TOP_X1:42,
+  GEAR1_C:11, GEAR1_R:10,
+  GEAR2_C:22, GEAR2_R:7,
+  GEAR3_C:32, GEAR3_R:4,
+  PENDULUM_C:27,
+  FLOOR_ROW:FLOOR_ROW
+};
+
+// Swinging pendulum hazard (anchored to ceiling over the central shaft)
+let pendulum=null;
+
+function buildRoom3Grid(){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)grid[r][c]=0;
+  for(let c=0;c<COLS;c++)set(0,c,1);
+  for(let r=0;r<ROWS;r++){set(r,0,1);set(r,COLS-1,1);}
+  // Full entry floor
+  rect(FLOOR_ROW,1,ROWS-1,COLS-2,1);
+  // Four ascent platforms
+  for(let c=R3.A_X0;c<=R3.A_X1;c++)set(R3.A_ROW,c,1);
+  for(let c=R3.B_X0;c<=R3.B_X1;c++)set(R3.B_ROW,c,1);
+  for(let c=R3.C_X0;c<=R3.C_X1;c++)set(R3.C_ROW,c,1);
+  for(let c=R3.TOP_X0;c<=R3.TOP_X1;c++)set(R3.TOP_ROW,c,1);
+  // Gear-cog stepping stones (2×2)
+  for(const g of [[R3.GEAR1_C,R3.GEAR1_R],[R3.GEAR2_C,R3.GEAR2_R],[R3.GEAR3_C,R3.GEAR3_R]]){
+    set(g[1],g[0],1);set(g[1],g[0]+1,1);set(g[1]+1,g[0],1);set(g[1]+1,g[0]+1,1);
+  }
+}
+
+function resetRoom3Enemies(){
+  enemies=[
+    mkEnemy({type:'Gear Golem',x:17*S,y:R3.B_ROW*S-30,hp:70,mhp:70,atk:20,def:10,exp:60,
+             home:17*S,range:3*S,spd:0.7,det:7*S,col:'#cc7722',floorRow:R3.B_ROW,
+             lx0:R3.B_X0*S,lx1:(R3.B_X1+1)*S,w:24,h:30,heavy:true}),
+    mkEnemy({type:'Vampire Bat',x:R3.PENDULUM_C*S,y:R3.C_ROW*S-10,hp:18,mhp:18,atk:10,def:0,exp:15,
+             home:R3.PENDULUM_C*S,range:6*S,spd:1.9,det:9*S,col:'#992233',
+             w:18,h:14,fly:true,hover:0}),
+  ];
+}
+
+function startTransition3(){
+  if(transitioning)return;
+  transitioning=true;
+  const fade=document.getElementById('fade');
+  fade.style.opacity='1';
+  setTimeout(()=>{
+    currentRoom=3;
+    buildRoom3Grid();
+    resetRoom3Enemies();
+    spawnCur={x:3*S+4,y:FLOOR_ROW*S-30};
+    ladderX0Cur=-999;ladderX1Cur=-998;
+    ladderTopCur=-999;ladderBotCur=-998;
+    P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;P.climbing=false;
+    shots=[];particles=[];
+    bossTriggered=false; boss=null;
+    gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
+    fanfare=null; Time_frozen=false;
+    // Pendulum hazard over the central shaft
+    pendulum={cx:R3.PENDULUM_C*S+S/2, cy:S, len:7*S, ang:0, av:0.9, phase:0};
+    initRoom3Gates();
+    const ban=document.getElementById('banner');
+    ban.textContent='Clocktower — Gearworks Ascent';
+    ban.classList.remove('show');
+    void ban.offsetWidth;
+    ban.classList.add('show');
+    fade.style.opacity='0';
+    setTimeout(()=>{transitioning=false;},320);
+  },320);
+}
+
+function initRoom3Gates(){
+  // TetherAnchors on the ceiling above the ascent platforms
+  anchors.push({x:R3.B_X0*S+3*S, y:S,   room:3});
+  anchors.push({x:R3.C_X0*S+3*S, y:S,   room:3});
+  anchors.push({x:R3.TOP_X0*S+4*S, y:S, room:3});
+  // Stat pickup on the top platform — STR Cog reward for the ascent
+  statPickups.push({
+    x:R3.TOP_X0*S+2*S, y:R3.TOP_ROW*S-12,
+    r:7, bob:0, collected:false, room:3,
+    apply:(p)=>{ p.mhp+=20; p.hp=p.mhp; toast('✦ STR Cog — MaxHP +20!'); }
+  });
 }
 
 // ── Boss fight (Death) ────────────────────────────────────────────────────────
@@ -1021,13 +1108,29 @@ function update(){
     if(e.hitFlash>0)e.hitFlash--;
     if(e.cd>0)e.cd--;
     const dx=(P.x+P.w/2)-(e.x+e.w/2), dist=Math.abs(dx);
-    const samePlane=Math.abs((P.y+P.h)-(e.y+e.h))<S*1.5;
-    if(dist<e.det && samePlane){            // chase
-      e.face=dx>0?1:-1; e.x+=e.face*e.spd*1.4;
-    } else {                                 // patrol
-      e.x+=e.face*e.spd;
-      if(Math.abs(e.x-e.home)>e.range)e.face*=-1;
-      if(e.lx0!==undefined){ if(e.x<e.lx0){e.x=e.lx0;e.face=1;} if(e.x+e.w>e.lx1){e.x=e.lx1-e.w;e.face=-1;} }
+    if(e.fly){
+      // Flying enemy: hover + free chase in both axes, ignores floor/plane
+      e.hover=(e.hover||0)+0.07;
+      const pdx=(P.x+P.w/2)-(e.x+e.w/2), pdy=(P.y+P.h*0.4)-(e.y+e.h/2);
+      const pd=Math.hypot(pdx,pdy);
+      if(dist<e.det){ // chase the player through the air
+        e.x+=(pdx/pd)*e.spd*1.5;
+        e.y+=(pdy/pd)*e.spd*1.5;
+        e.face=pdx>0?1:-1;
+      } else {        // drift around home with a hover bob
+        e.x+=e.face*e.spd*0.6;
+        if(Math.abs(e.x-e.home)>e.range)e.face*=-1;
+        e.y+=Math.sin(e.hover)*0.6;
+      }
+    } else {
+      const samePlane=Math.abs((P.y+P.h)-(e.y+e.h))<S*1.5;
+      if(dist<e.det && samePlane){            // chase
+        e.face=dx>0?1:-1; e.x+=e.face*e.spd*1.4;
+      } else {                                 // patrol
+        e.x+=e.face*e.spd;
+        if(Math.abs(e.x-e.home)>e.range)e.face*=-1;
+        if(e.lx0!==undefined){ if(e.x<e.lx0){e.x=e.lx0;e.face=1;} if(e.x+e.w>e.lx1){e.x=e.lx1-e.w;e.face=-1;} }
+      }
     }
     // contact damage
     if(P.x<e.x+e.w&&P.x+P.w>e.x&&P.y<e.y+e.h&&P.y+P.h>e.y&&e.cd<=0){
@@ -1047,8 +1150,25 @@ function update(){
     bossTriggered=true;
     spawnBoss();
   }
+  // Exit to Clocktower (Room 2 → Room 3): only past the dissolved iron gate
+  if(currentRoom===2 && !transitioning){
+    const ironGate=gates.find(g=>g.type==='iron'&&g.room===2);
+    if(ironGate&&ironGate.dissolved && P.x+P.w>=(COLS-1)*S-4) startTransition3();
+  }
   // Boss update
   updateBoss();
+
+  // Pendulum hazard (Room 3) — swings over the central shaft, knocks player back
+  if(pendulum&&currentRoom===3){
+    pendulum.phase+=0.024;
+    pendulum.ang=Math.sin(pendulum.phase)*0.9;
+    const bx=pendulum.cx+Math.sin(pendulum.ang)*pendulum.len;
+    const by=pendulum.cy+Math.cos(pendulum.ang)*pendulum.len;
+    if(Math.abs((P.x+P.w/2)-bx)<14 && Math.abs((P.y+P.h/2)-by)<14 && P.iframes<=0){
+      hurtPlayer(14);
+      P.vx=(P.x+P.w/2)<bx?-7:7; P.vy=-4;
+    }
+  }
 
   // Ability gates
   for(const g of gates){
@@ -1256,6 +1376,65 @@ function draw(){
       x.fillStyle='#1e1830';
       x.beginPath();x.moveTo(sx*S+S-3,sy);x.lineTo(sx*S+S,sy+8);x.lineTo(sx*S+S+3,sy);x.fill();
     }
+  }
+
+  // ── Room 3 (Clocktower) machinery ────────────────────────────────────────
+  if(currentRoom===3){
+    const spin=Date.now()/1000;
+    // Rotating gear cogs over the 2×2 stepping stones
+    const cogs=[[R3.GEAR1_C,R3.GEAR1_R,1],[R3.GEAR2_C,R3.GEAR2_R,-1],[R3.GEAR3_C,R3.GEAR3_R,1]];
+    for(const [gc,gr,dir] of cogs){
+      const ccx=gc*S+S, ccy=gr*S+S, rad=S*0.95;
+      x.save(); x.translate(ccx,ccy); x.rotate(spin*dir);
+      x.fillStyle='#6b4a1c'; x.strokeStyle='#3a2810'; x.lineWidth=1.5;
+      // Teeth
+      for(let i=0;i<8;i++){
+        x.rotate(Math.PI/4);
+        x.fillRect(-3,-rad-3,6,6);
+      }
+      // Body
+      x.beginPath(); x.arc(0,0,rad*0.8,0,7); x.fill(); x.stroke();
+      x.fillStyle='#2a1d0a'; x.beginPath(); x.arc(0,0,rad*0.3,0,7); x.fill();
+      // Spokes
+      x.strokeStyle='#4a3414'; x.lineWidth=2;
+      for(let i=0;i<4;i++){ x.rotate(Math.PI/2); x.beginPath(); x.moveTo(0,0); x.lineTo(0,-rad*0.75); x.stroke(); }
+      x.restore();
+    }
+    // Background gear silhouettes (parallax depth, slow spin)
+    x.save(); x.globalAlpha=0.12;
+    for(const [bx,by,br,bd] of [[8*S,4*S,2.4*S,1],[38*S,9*S,3*S,-1],[20*S,12*S,2*S,1]]){
+      x.save(); x.translate(bx,by); x.rotate(spin*0.3*bd);
+      x.fillStyle='#caa060';
+      for(let i=0;i<10;i++){ x.rotate(Math.PI/5); x.fillRect(-4,-br-5,8,9); }
+      x.beginPath(); x.arc(0,0,br*0.8,0,7); x.fill(); x.restore();
+    }
+    x.restore();
+    // Swinging pendulum hazard
+    if(pendulum){
+      const bx=pendulum.cx+Math.sin(pendulum.ang)*pendulum.len;
+      const by=pendulum.cy+Math.cos(pendulum.ang)*pendulum.len;
+      x.save();
+      // Rod
+      x.strokeStyle='#5a4a2a'; x.lineWidth=2.5;
+      x.beginPath(); x.moveTo(pendulum.cx,pendulum.cy); x.lineTo(bx,by); x.stroke();
+      // Ceiling mount
+      x.fillStyle='#3a2d14'; x.fillRect(pendulum.cx-5,pendulum.cy-3,10,5);
+      // Blade bob
+      x.shadowColor='rgba(220,200,160,0.6)'; x.shadowBlur=8;
+      const pg=x.createRadialGradient(bx,by,2,bx,by,12);
+      pg.addColorStop(0,'#d8c890'); pg.addColorStop(1,'#7a6228');
+      x.fillStyle=pg;
+      x.beginPath(); x.ellipse(bx,by,8,12,pendulum.ang,0,7); x.fill();
+      x.shadowBlur=0;
+      x.strokeStyle='#cfc098'; x.lineWidth=1; x.stroke();
+      x.restore();
+    }
+    // "THRONE ROOM" stub at the top-right exit
+    x.save();
+    x.font='bold 8px monospace'; x.textAlign='center';
+    x.fillStyle='rgba(200,180,230,0.7)';
+    x.fillText('↑ THRONE ROOM', (R3.TOP_X1-1)*S, R3.TOP_ROW*S-6);
+    x.textAlign='left'; x.restore();
   }
 
   // Wall moss/grime streaks (atmospheric)
