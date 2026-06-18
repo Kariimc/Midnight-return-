@@ -42,6 +42,16 @@ namespace MidnightReturn.Player
         private Coroutine _afterimageCoroutine;
         private float _runDustTimer;
 
+        // ── Hourglass time-rewind ring buffer ─────────────────────────────────
+        public const int HOURGLASS_BUFFER = 180;  // 3 seconds @ 60 fps
+
+        public struct HourglassSnapshot { public Vector3 Pos; public int Hp; }
+        private readonly HourglassSnapshot[] _hrSnaps = new HourglassSnapshot[HOURGLASS_BUFFER];
+        private int _hrHead, _hrCount;
+
+        public float HourglassCooldown { get; set; }
+        public bool  IsRewinding       { get; set; }
+
         // ── Dust step interval ────────────────────────────────────────────────
         private const float RUN_DUST_INTERVAL = 0.22f;
 
@@ -75,7 +85,8 @@ namespace MidnightReturn.Player
                .Add(new DragonKickState(this))
                .Add(new ClimbState(this))
                .Add(new SoulTetherState(this))
-               .Add(new WraithStepState(this));
+               .Add(new WraithStepState(this))
+               .Add(new HourglassState(this));
             FSM.Transition("Idle");
         }
 
@@ -94,12 +105,14 @@ namespace MidnightReturn.Player
         private void Update()
         {
             if (GameManager.Instance.IsPaused) return;
+            HourglassCooldown = Mathf.Max(0f, HourglassCooldown - Time.deltaTime);
             FSM.Update(Time.deltaTime);
         }
 
         private void FixedUpdate()
         {
             if (GameManager.Instance.IsPaused) return;
+            if (!IsRewinding) RecordHourglassSnapshot();
             Movement.Tick(Time.fixedDeltaTime, Input);
             FSM.FixedUpdate(Time.fixedDeltaTime);
 
@@ -218,6 +231,22 @@ namespace MidnightReturn.Player
                     Movement.FacingDir
                 );
             }
+        }
+
+        // ── Hourglass snapshot helpers ────────────────────────────────────────
+        private void RecordHourglassSnapshot()
+        {
+            _hrSnaps[_hrHead] = new HourglassSnapshot { Pos = transform.position, Hp = Stats.Hp };
+            _hrHead           = (_hrHead + 1) % HOURGLASS_BUFFER;
+            if (_hrCount < HOURGLASS_BUFFER) _hrCount++;
+        }
+
+        public bool TryGetHourglassSnapshot(int ageFrames, out HourglassSnapshot snap)
+        {
+            if (ageFrames >= _hrCount) { snap = default; return false; }
+            int idx = ((_hrHead - 1 - ageFrames) % HOURGLASS_BUFFER + HOURGLASS_BUFFER) % HOURGLASS_BUFFER;
+            snap = _hrSnaps[idx];
+            return true;
         }
 
         private float _resistanceCache = 0f;

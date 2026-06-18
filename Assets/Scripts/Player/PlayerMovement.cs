@@ -45,6 +45,7 @@ namespace MidnightReturn.Player
         public bool CanWallCling   = true;
         public bool CanSoulTether  = false;
         public bool CanWraithStep  = false;
+        public bool CanHourglass   = false;
 
         // Suppresses the physics tick while WraithStepState drives CC directly.
         public bool IsSuppressed   { get; set; }

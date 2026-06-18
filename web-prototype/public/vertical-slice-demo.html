@@ -92,7 +92,8 @@ canvas{display:block;background:#08060f;}
   <span class="tag">K</span> sub-weapon (10 MP) &nbsp; <span class="tag">E</span> save (at statue) &nbsp; <span class="tag">X</span> air dash (after boss) &nbsp;
   <span class="tag">T</span> soul tether (airborne — chain to ceiling hook) &nbsp;
   dash into a <b>shimmering purple wall</b> to phase through (Wraith Step) &nbsp; <span class="tag">R</span> reset
-  <br><b>Loop:</b> kill enemies → defeat Death → Air Dash → hidden platform (Double Jump + Soul Tether + Wraith Step) → iron gate opens → Clocktower
+  <br><span class="tag">U</span> Death's Hourglass — rewind 3 s (unlock by defeating the Clockwork Sentinel in Room 3) &nbsp;
+  <br><b>Loop:</b> kill enemies → defeat Death → Air Dash → hidden platform (Double Jump + Soul Tether + Wraith Step) → iron gate → Clocktower → defeat Sentinel → Hourglass
 </div>
 
 <script>
@@ -178,6 +179,16 @@ let doubleJumpUnlocked = false;
 let P_djUsed = false;  // double jump used this airtime
 let soulTetherUnlocked = false;
 let wraithStepUnlocked = false;
+let hourglassUnlocked = false;
+let hourglassCd = 0;         // countdown frames (600 = 10 s at 60 fps)
+// Death's Hourglass ring buffer — 180 frames (~3 s) of position + HP
+const HR_BUF = 180;
+const hrSnaps = Array.from({length:HR_BUF},()=>({x:0,y:0,hp:0}));
+let hrHead=0, hrCount=0;
+let hrRewinding=false, hrRewindT=0;
+
+// Clockwork Sentinel boss (Room 3)
+let boss3=null, boss3Triggered=false;
 
 // Active tether pull: {anchorX, anchorY, t, maxT}
 let tether = null;
@@ -256,6 +267,8 @@ set(10,20,1);set(10,21,1);set(10,22,1);set(10,23,1);set(10,24,1);
   boss=null; bossTriggered=false; airDashUnlocked=false; airDashes=0; airDashCd=0;
   doubleJumpUnlocked=false; P_djUsed=false;
   soulTetherUnlocked=false; wraithStepUnlocked=false;
+  hourglassUnlocked=false; hourglassCd=0; hrHead=0; hrCount=0; hrRewinding=false; hrRewindT=0;
+  boss3=null; boss3Triggered=false;
   tether=null; P.wraith=0; pendulum=null;
   gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
   fanfare=null; Time_frozen=false;
@@ -391,6 +404,7 @@ function startTransition3(){
     P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;P.climbing=false;
     shots=[];particles=[];
     bossTriggered=false; boss=null;
+    boss3=null; boss3Triggered=false; hrHead=0; hrCount=0; hrRewinding=false; hrRewindT=0;
     gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
     fanfare=null; Time_frozen=false;
     // Pendulum hazard over the central shaft
@@ -597,6 +611,246 @@ function killBoss(){
     airDashUnlocked=true; airDashes=1;
     toast('✦ AIR DASH UNLOCKED — [X] mid-air!');
   },1800);
+}
+
+// ── Clockwork Sentinel boss (Room 3) ─────────────────────────────────────────
+function spawnClockworkBoss(){
+  boss3={
+    x:R3.TOP_X1*S-24, y:R3.TOP_ROW*S-44,
+    w:22, h:44,
+    hp:250, mhp:250, atk:22,
+    phase:1, atkCd:72, atkPattern:0,
+    vx:0, vy:0, face:-1, grounded:false,
+    hitFlash:0, dead:0, dissolve:0,
+    attacking:false, atkType:null, atkT:0,
+    atkStart:{x:0,y:0},
+    transitioning:false, transT:0,
+    flash:0, spinAngle:0, _diveStartY:0, _diveEndY:0
+  };
+  screenFlash('rgba(220,140,20,0.6)',30); shake=8;
+  toast('⚙ CLOCKWORK SENTINEL HAS AWAKENED');
+}
+
+function updateBoss3(){
+  if(!boss3||boss3.dead)return;
+  if(boss3.hitFlash>0)boss3.hitFlash--;
+  if(boss3.flash>0)boss3.flash--;
+  boss3.spinAngle+=0.12;
+
+  if(boss3.phase===1&&!boss3.transitioning&&boss3.hp<=boss3.mhp*0.40){
+    boss3.transitioning=true; boss3.transT=90; boss3.attacking=false;
+    screenFlash('rgba(220,140,20,0.6)',30); shake=10;
+    toast('⚙ SENTINEL — AERIAL MODE!');
+    return;
+  }
+  if(boss3.transitioning){ boss3.transT--; if(boss3.transT<=0){boss3.transitioning=false;boss3.phase=2;boss3.atkCd=54;} return; }
+
+  if(boss3.phase===1){
+    boss3.vy=boss3.grounded?-1:Math.min(boss3.vy+0.5,12);
+    if(!boss3.attacking){
+      const dx=(P.x+P.w/2)-(boss3.x+boss3.w/2);
+      boss3.face=dx>0?1:-1;
+      const approach=Math.abs(dx)>boss3.w*2.5?boss3.face*2.0:0;
+      moveAxis(boss3,approach,0); moveAxis(boss3,0,boss3.vy);
+      boss3.atkCd--;
+      if(boss3.atkCd<=0){
+        boss3.atkCd=144; boss3.atkPattern=(boss3.atkPattern+1)%2;
+        boss3.atkType=boss3.atkPattern===0?'slam':'throw';
+        boss3.attacking=true; boss3.atkT=0; boss3.atkStart={x:boss3.x,y:boss3.y};
+      }
+    } else updateBoss3Attack();
+  } else {
+    const tx=(P.x+P.w/2)-boss3.face*44-boss3.w/2;
+    const ty=(P.y+P.h/2)-84-boss3.h/2;
+    boss3.x+=(Math.max(S,Math.min(W-S-boss3.w,tx))-boss3.x)*0.04;
+    boss3.y+=(Math.max(S,Math.min((R3.TOP_ROW+1)*S,ty))-boss3.y)*0.04;
+    boss3.face=(P.x+P.w/2)>(boss3.x+boss3.w/2)?1:-1;
+    if(!boss3.attacking){
+      boss3.atkCd--;
+      if(boss3.atkCd<=0){
+        boss3.atkCd=108; boss3.atkPattern=(boss3.atkPattern+1)%2;
+        boss3.atkType=boss3.atkPattern===0?'dive':'barrage3';
+        boss3.attacking=true; boss3.atkT=0; boss3.atkStart={x:boss3.x,y:boss3.y};
+      }
+    } else updateBoss3Attack();
+  }
+
+  // Player melee hits
+  if(P.atk>6&&boss3.hitFlash<=0){
+    const hb={x:P.face>0?P.x+P.w:P.x-30,y:P.y-2,w:30,h:P.h+4};
+    if(hb.x<boss3.x+boss3.w&&hb.x+hb.w>boss3.x&&hb.y<boss3.y+boss3.h&&hb.y+hb.h>boss3.y){
+      const dmg=Math.max(1,8+P.lv*3)+Math.floor(Math.random()*5);
+      boss3.hp-=dmg; boss3.hitFlash=8; hitstop=2; shake=4;
+      addParticles(boss3.x+boss3.w/2,boss3.y+boss3.h/2,'#ffaa44',10);
+      if(boss3.hp<=0&&!boss3.dead)killClockworkBoss();
+    }
+  }
+  // Sub-weapon hits
+  for(const s of shots){
+    if(!boss3||boss3.dead||boss3.hitFlash>0)continue;
+    if(s.x>boss3.x&&s.x<boss3.x+boss3.w&&s.y>boss3.y&&s.y<boss3.y+boss3.h){
+      boss3.hp-=14; boss3.hitFlash=8; s.life=0;
+      addParticles(boss3.x+boss3.w/2,boss3.y+boss3.h/2,'#ffaa44',8);
+      if(boss3.hp<=0&&!boss3.dead)killClockworkBoss();
+    }
+  }
+  // Contact damage
+  if(!boss3.attacking&&P.x<boss3.x+boss3.w&&P.x+P.w>boss3.x&&P.y<boss3.y+boss3.h&&P.y+P.h>boss3.y){
+    hurtPlayer(boss3.atk);
+  }
+}
+
+function updateBoss3Attack(){
+  boss3.atkT++;
+  const t=boss3.atkT;
+  switch(boss3.atkType){
+    case 'slam':
+      if(t>=16&&t<28){ boss3.x+=boss3.face*8; boss3.x=Math.max(S,Math.min(W-S-boss3.w,boss3.x)); }
+      if(t===28){
+        const hbx=boss3.face>0?boss3.x:boss3.x-56;
+        if(P.x<hbx+boss3.w+56&&P.x+P.w>hbx&&P.y<boss3.y+boss3.h&&P.y+P.h>boss3.y+10){
+          hurtPlayer(boss3.atk); shake=6;
+        }
+        addParticles(boss3.x+boss3.w/2+boss3.face*28,boss3.y+boss3.h*0.9,'#cc8822',20);
+        screenFlash('rgba(200,120,20,0.18)',8);
+      }
+      if(t>42)boss3.attacking=false;
+      break;
+    case 'throw':
+      for(const [si,sf] of [[0,14],[1,28],[2,42]]){
+        if(t===sf){
+          const hbx=boss3.face>0?boss3.x+boss3.w+si*20:boss3.x-30-si*20;
+          const hby=boss3.y+boss3.h*0.4-si*8;
+          if(P.x<hbx+28&&P.x+P.w>hbx&&P.y<hby+28&&P.y+P.h>hby){
+            hurtPlayer(Math.floor(boss3.atk*0.7)); shake=3;
+          }
+          addParticles(hbx+14,hby+14,'#cc8822',10);
+        }
+      }
+      if(t>56)boss3.attacking=false;
+      break;
+    case 'dive':
+      if(t<=16){
+        const pct=t/16;
+        boss3.x=boss3.atkStart.x+(P.x+P.w/2-boss3.w/2-boss3.atkStart.x)*pct;
+        boss3.y=boss3.atkStart.y+(P.y-120-boss3.atkStart.y)*pct;
+        boss3.x=Math.max(S,Math.min(W-S-boss3.w,boss3.x)); boss3.y=Math.max(S,boss3.y);
+      }
+      if(t===16){boss3._diveStartY=boss3.y; boss3._diveEndY=P.y+P.h/2-boss3.h/2;}
+      if(t>20&&t<=30){
+        const pct=(t-20)/10;
+        boss3.y=boss3._diveStartY+(boss3._diveEndY-boss3._diveStartY)*pct;
+      }
+      if(t===30){
+        const cx=boss3.x+boss3.w/2, cy=boss3.y+boss3.h;
+        if(Math.abs((P.x+P.w/2)-cx)<52&&Math.abs((P.y+P.h/2)-cy)<44){
+          hurtPlayer(Math.floor(boss3.atk*1.4)); shake=9;
+        }
+        addParticles(cx,cy,'#ff8822',28); addParticles(cx-16,cy,'#cc6600',12);
+        screenFlash('rgba(200,120,20,0.3)',12); shake=8;
+      }
+      if(t>42)boss3.attacking=false;
+      break;
+    case 'barrage3':
+      for(const [si,sf] of [[0,10],[1,28],[2,46]]){
+        if(t===sf){
+          const hbx=boss3.face>0?boss3.x+boss3.w+si*8:boss3.x-40-si*8;
+          const hby=boss3.y+boss3.h*0.3-si*10;
+          if(P.x<hbx+40&&P.x+P.w>hbx&&P.y<hby+40&&P.y+P.h>hby){
+            hurtPlayer(Math.floor(boss3.atk*0.8)); shake=5;
+          }
+          addParticles(boss3.x+boss3.w/2+boss3.face*(28+si*12),boss3.y+boss3.h/2,'#cc8822',12);
+          screenFlash('rgba(180,100,10,0.15)',8);
+        }
+      }
+      if(t>62)boss3.attacking=false;
+      break;
+  }
+}
+
+function killClockworkBoss(){
+  boss3.dead=1; boss3.attacking=false;
+  gainExp(450); shake=14;
+  addParticles(boss3.x+boss3.w/2,boss3.y+boss3.h/2,'#ffcc44',60);
+  addParticles(boss3.x+boss3.w/2,boss3.y+boss3.h/2,'#ffffff',30);
+  screenFlash('rgba(255,200,80,0.7)',50);
+  setTimeout(()=>{
+    hourglassUnlocked=true; hourglassCd=0;
+    startFanfare("Death's Hourglass",
+      "Rewind time 3 seconds. Restores position + HP.  [U] — 10s cooldown.",
+      ()=>{ toast('✦ Hourglass — [U] to rewind time!'); }
+    );
+  },1800);
+}
+
+function drawBoss3(){
+  if(!boss3)return;
+  if(boss3.dead){
+    boss3.dissolve=Math.min(1,boss3.dissolve+0.012);
+    if(boss3.dissolve>=1){boss3=null;return;}
+    x.save(); x.globalAlpha=Math.max(0,1-boss3.dissolve*2);
+    renderBoss3Body(); x.restore(); return;
+  }
+  renderBoss3Body();
+  if(currentRoom!==3)return;
+  // Boss3 HP bar
+  const bpct=Math.max(0,boss3.hp/boss3.mhp);
+  const bw2=220,bx2=(W-bw2)/2,by2=10;
+  x.fillStyle='rgba(0,0,0,0.8)'; x.fillRect(bx2-2,by2-2,bw2+4,18);
+  x.fillStyle=bpct>0.4?(boss3.phase===2?'#cc6600':'#886600'):'#ff7700';
+  x.fillRect(bx2,by2,bw2*bpct,14);
+  x.strokeStyle='rgba(200,150,60,0.7)'; x.lineWidth=1; x.strokeRect(bx2,by2,bw2,14);
+  x.fillStyle='rgba(255,220,140,0.95)'; x.font='bold 8px monospace'; x.textAlign='center';
+  x.fillText(boss3.phase===2?'⚙ CLOCKWORK SENTINEL [AERIAL]':'⚙ CLOCKWORK SENTINEL',bx2+bw2/2,by2+11);
+  x.textAlign='left';
+  if(boss3.transitioning){
+    x.globalAlpha=0.5+0.5*Math.sin(Date.now()/80);
+    x.fillStyle='#ffaa44'; x.font='bold 9px monospace'; x.textAlign='center';
+    x.fillText('PHASE TRANSITION',bx2+bw2/2,by2+30); x.textAlign='left'; x.globalAlpha=1;
+  }
+}
+
+function renderBoss3Body(){
+  if(!boss3)return;
+  const bx=boss3.x,by=boss3.y,bw=boss3.w,bh=boss3.h;
+  const fl=boss3.hitFlash>0, spin=boss3.spinAngle||0;
+  x.save();
+  if(fl)x.globalAlpha=0.55;
+  // Shadow
+  x.fillStyle='rgba(100,60,0,0.4)'; x.fillRect(bx+2,by+bh,bw-4,7);
+  // Bronze body
+  const bg=x.createLinearGradient(bx,by,bx+bw,by+bh);
+  bg.addColorStop(0,fl?'#ffffff':'#8a5a18');
+  bg.addColorStop(0.45,fl?'#eeeeee':'#6a3e10');
+  bg.addColorStop(1,fl?'#cccccc':'#3a1e04');
+  x.fillStyle=bg; x.fillRect(bx,by,bw,bh);
+  if(!fl){
+    x.fillStyle='rgba(180,110,30,0.5)'; x.fillRect(bx,by,2,bh); x.fillRect(bx+bw-2,by,2,bh);
+    x.fillRect(bx,by+bh*0.35,bw,2);
+    if(boss3.phase===2){
+      x.globalAlpha=0.2;
+      x.fillStyle='#ffcc44';
+      for(let i=0;i<4;i++) x.fillRect(bx+Math.random()*bw,by+Math.random()*bh,3,3);
+      x.globalAlpha=0.55;
+    }
+    // Spinning gear chest
+    const gcx=bx+bw/2, gcy=by+bh*0.42, gr=bw*0.33;
+    x.save(); x.translate(gcx,gcy); x.rotate(spin);
+    x.fillStyle='#cc8822'; x.strokeStyle='#3a1e04'; x.lineWidth=1;
+    for(let i=0;i<6;i++){ x.rotate(Math.PI/3); x.fillRect(-2.5,-gr-2,5,5); }
+    x.beginPath(); x.arc(0,0,gr*0.85,0,7); x.fill(); x.stroke();
+    x.fillStyle='#3a1e04'; x.beginPath(); x.arc(0,0,gr*0.35,0,7); x.fill();
+    x.strokeStyle='#ffdd88'; x.lineWidth=0.7;
+    for(let i=0;i<12;i++){ x.rotate(Math.PI/6); x.beginPath(); x.moveTo(0,-gr*0.6); x.lineTo(0,-gr*0.75); x.stroke(); }
+    x.restore();
+  }
+  // Amber eyes
+  const ex0=boss3.face>0?bx+bw-8:bx+2, ex1=boss3.face>0?bx+bw-3:bx+7;
+  x.shadowColor='rgba(255,160,20,0.9)'; x.shadowBlur=10;
+  x.fillStyle=fl?'#ffffff':'#ffbb33';
+  x.beginPath(); x.arc(ex0,by+6,2.5,0,7); x.fill();
+  x.beginPath(); x.arc(ex1,by+6,2.5,0,7); x.fill();
+  x.shadowBlur=0; x.restore();
 }
 
 function drawBoss(){
@@ -986,6 +1240,32 @@ function drawFanfare(){
 
 // ── Update ───────────────────────────────────────────────────────────────────
 function update(){
+  // Record Hourglass snapshot (before physics, skip during rewind)
+  if(!hrRewinding && !Time_frozen){
+    hrSnaps[hrHead]={x:P.x,y:P.y,hp:P.hp};
+    hrHead=(hrHead+1)%HR_BUF;
+    if(hrCount<HR_BUF)hrCount++;
+  }
+  // Hourglass rewind tick — overrides all other game logic
+  if(hrRewinding){
+    hrRewindT++;
+    const progress=Math.min(1,hrRewindT/30);
+    const available=Math.min(hrCount,HR_BUF);
+    const ageFrames=Math.floor(progress*(available-1));
+    const idx=((hrHead-1-ageFrames)%HR_BUF+HR_BUF)%HR_BUF;
+    P.x=hrSnaps[idx].x; P.y=hrSnaps[idx].y;
+    if(hrRewindT>=30){
+      const oldestIdx=((hrHead-available)%HR_BUF+HR_BUF)%HR_BUF;
+      if(hrSnaps[oldestIdx].hp>P.hp) P.hp=Math.min(P.mhp,hrSnaps[oldestIdx].hp);
+      hrRewinding=false; hourglassCd=600;
+      addParticles(P.x+P.w/2,P.y+P.h/2,'#ffcc44',24);
+      screenFlash('rgba(255,200,60,0.4)',12);
+      toast('✦ Time restored!');
+    }
+    updateFanfare();
+    return;
+  }
+
   updateFanfare();
   if(Time_frozen)return;
   if(hitstop>0){hitstop--;return;}
@@ -1038,6 +1318,15 @@ function update(){
     }
     // Restore air dash on landing
     if(P.grounded && airDashUnlocked && airDashes===0) airDashes=1;
+
+    // ── Death's Hourglass [U] — rewind 3 seconds ─────────────────────────────
+    if(hourglassUnlocked && K['u'] && !hrRewinding && hourglassCd<=0 && hrCount>10){
+      K['u']=false;
+      hrRewinding=true; hrRewindT=0;
+      screenFlash('rgba(255,200,60,0.55)',20); shake=4;
+      toast('⏳ REWINDING...');
+    }
+    if(hourglassCd>0)hourglassCd--;
 
     // ── Soul Tether [T] — fire chain to nearest ceiling anchor ───────────────
     if(soulTetherUnlocked && K['t'] && !P.grounded && !tether){
@@ -1155,8 +1444,16 @@ function update(){
     const ironGate=gates.find(g=>g.type==='iron'&&g.room===2);
     if(ironGate&&ironGate.dissolved && P.x+P.w>=(COLS-1)*S-4) startTransition3();
   }
-  // Boss update
+  // Boss update (Room 2 — Death)
   updateBoss();
+  // Boss update (Room 3 — Clockwork Sentinel)
+  updateBoss3();
+
+  // Clockwork Sentinel spawn trigger — player reaches the top platform
+  if(currentRoom===3 && !boss3Triggered && !boss3 && P.x+P.w>=R3.TOP_X0*S){
+    boss3Triggered=true;
+    spawnClockworkBoss();
+  }
 
   // Pendulum hazard (Room 3) — swings over the central shaft, knocks player back
   if(pendulum&&currentRoom===3){
@@ -1534,6 +1831,7 @@ function draw(){
     x.restore();
   }
   drawBoss();
+  drawBoss3();
 
   // ── LAYER 7b: Ability gates ───────────────────────────────────────────────
   for(const g of gates){
@@ -1827,6 +2125,29 @@ function draw(){
   // ── LAYER 11: Color grade overlay ─────────────────────────────────────────
   x.fillStyle='rgba(20,10,40,0.08)';
   x.fillRect(0,0,W,H);
+
+  // ── Hourglass rewind overlay ──────────────────────────────────────────────
+  if(hrRewinding){
+    const progress=Math.min(1,hrRewindT/30);
+    x.save();
+    x.globalAlpha=0.18+0.06*Math.sin(Date.now()/40);
+    x.fillStyle='rgba(255,200,60,1)';
+    x.fillRect(0,0,W,H);
+    x.globalAlpha=0.92;
+    x.fillStyle='#ffe880'; x.font='bold 13px monospace'; x.textAlign='center';
+    x.fillText('⏳  REWINDING  ⏳', W/2, H/2);
+    x.fillStyle='rgba(255,210,80,0.5)'; x.fillRect(W/4,H/2+6,W/2*progress,4);
+    x.textAlign='left'; x.restore();
+  }
+  // Hourglass cooldown badge (top-right, subtle)
+  if(hourglassUnlocked && hourglassCd>0){
+    const cdSec=Math.ceil(hourglassCd/60);
+    x.save(); x.globalAlpha=0.7;
+    x.fillStyle='rgba(0,0,0,0.6)'; x.fillRect(W-52,28,48,14);
+    x.fillStyle='#ffcc44'; x.font='8px monospace';
+    x.fillText('⏳ '+cdSec+'s',W-48,39);
+    x.restore();
+  }
 
   // Fanfare overlay (topmost)
   drawFanfare();

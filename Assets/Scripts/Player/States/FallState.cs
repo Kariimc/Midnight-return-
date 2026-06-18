@@ -31,6 +31,9 @@ namespace MidnightReturn.Player.States
             if (Movement.CanClimb && (Input.IsPressingUp || Input.IsPressingDown))
                 { Player.FSM.Transition("Climb"); return; }
             if (Input.HasDash)   { Player.FSM.Transition("Dash");       return; }
+            // Down+Spell airborne + Hourglass unlocked → time rewind
+            if (Input.HasSpell && Input.IsPressingDown && Movement.CanHourglass && Player.HourglassCooldown <= 0f)
+                { Player.FSM.Transition("Hourglass"); return; }
             // Up+Spell while airborne → Soul Tether fires chain to nearest anchor
             if (Input.HasSpell && Input.IsPressingUp && Movement.CanSoulTether)
                 { Player.FSM.Transition("SoulTether"); return; }

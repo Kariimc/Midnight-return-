@@ -65,4 +65,5 @@ namespace MidnightReturn.Utils
     // ── Ability traversal events ────────────────────────────────────────
     public struct SoulTetherLatchedEvent   { public UnityEngine.Vector3 AnchorPos; }
     public struct WraithStepActivatedEvent { public UnityEngine.Vector3 WallPos; }
+    public struct HourglassActivatedEvent  { public UnityEngine.Vector3 PlayerPos; }
 }

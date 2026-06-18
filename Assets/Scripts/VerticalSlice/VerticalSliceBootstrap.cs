@@ -337,6 +337,9 @@ namespace MidnightReturn.VerticalSlice
                             ClocktowerContent.SurfaceY(ClocktowerContent.PLAT_C_ROW) + 2f, 0f),
                 new Color(0.45f, 0.05f, 0.08f));
 
+            // Boss trigger near the top-right platform entrance
+            BuildClockworkBossTrigger();
+
             RepositionPlayer(Room3SpawnPoint);
 
             RenderSettings.ambientLight = new Color(0.06f, 0.06f, 0.09f); // cold mechanical
@@ -564,6 +567,69 @@ namespace MidnightReturn.VerticalSlice
             var trigger = go.AddComponent<StatPickupTrigger>();
             trigger.DisplayText = itemId;
             trigger.Apply       = apply;
+        }
+
+        private void BuildClockworkBossTrigger()
+        {
+            float topFloorY = ClocktowerContent.SurfaceY(ClocktowerContent.PLAT_TOP_ROW);
+            var go = new GameObject("BossTrigger_Room3");
+            go.transform.position = new Vector3(
+                ClocktowerContent.ColX(32),
+                topFloorY * 0.5f,
+                0f);
+            _room1Objects.Add(go);
+
+            var box = go.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(4f, topFloorY, 1f);
+
+            var trigger = go.AddComponent<BossTrigger>();
+            trigger.OnPlayerEntered = _ => SpawnClockworkSentinel();
+        }
+
+        private void SpawnClockworkSentinel()
+        {
+            var data = ScriptableObject.CreateInstance<Data.EnemyDataSO>();
+            data.EnemyId        = "clockwork_sentinel";
+            data.DisplayName    = "Clockwork Sentinel";
+            data.Zone           = Data.EnemyZone.Clocktower;
+            data.MaxHp          = 250;
+            data.Attack         = 22;
+            data.Defense        = 8;
+            data.ExpReward      = 450;
+            data.Behavior       = Data.AIBehavior.Boss;
+            data.MoveSpeed      = 3.5f;
+            data.DetectionRange = 50f;
+            data.AttackRange    = 2.0f;
+            data.AggroRange     = 50f;
+            data.AttackCooldown = 2.4f;
+            data.AttackWindup   = 0.38f;
+            data.DeathColor     = new Color(1f, 0.6f, 0.1f);
+
+            float topY = ClocktowerContent.SurfaceY(ClocktowerContent.PLAT_TOP_ROW);
+            var pos = new Vector3(
+                ClocktowerContent.ColX(ClocktowerContent.PLAT_TOP_X1 - 3),
+                topY + 0.1f,
+                0f);
+
+            var go = new GameObject("Boss_ClockworkSentinel") { layer = _enemyLayer };
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            var cc = go.AddComponent<CharacterController>();
+            cc.height = 2.0f; cc.radius = 0.5f; cc.center = new Vector3(0f, 1.0f, 0f);
+
+            var vis = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            vis.name  = "Visual";
+            vis.layer = _enemyLayer;
+            vis.transform.SetParent(go.transform, false);
+            vis.transform.localScale    = new Vector3(0.95f, 1.2f, 0.5f);
+            vis.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+            if (vis.TryGetComponent<Collider>(out var vc)) Destroy(vc);
+            vis.GetComponent<MeshRenderer>().sharedMaterial = LitMaterial(new Color(0.65f, 0.45f, 0.15f));
+
+            var boss = go.AddComponent<ClockworkSentinelBoss>();
+            boss.Configure(data);
         }
 
         private void BuildBossTrigger()

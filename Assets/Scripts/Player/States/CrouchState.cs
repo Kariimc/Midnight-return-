@@ -62,6 +62,10 @@ namespace MidnightReturn.Player.States
                 return;
             }
 
+            // Spell while crouching + Hourglass unlocked → time rewind
+            if (Input.HasSpell && Movement.CanHourglass && Player.HourglassCooldown <= 0f)
+                { ExitCrouch(); Player.FSM.Transition("Hourglass"); return; }
+
             if (Input.HasJump) { ExitCrouch(); Player.FSM.Transition("Jump"); return; }
             if (Input.HasDash) { ExitCrouch(); Player.FSM.Transition("Dash"); return; }
 
