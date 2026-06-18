@@ -1,5 +1,7 @@
+using UnityEngine;
 using MidnightReturn.Utils;
 using MidnightReturn.Systems;
+using MidnightReturn.VerticalSlice;
 
 namespace MidnightReturn.Player.States
 {
@@ -20,8 +22,31 @@ namespace MidnightReturn.Player.States
             Player.SetInvincible(true);
         }
 
+        private static readonly Collider[] _phaseBuffer = new Collider[4];
+
         public override void OnUpdate(float dt)
         {
+            // Detect PhaseableWall ahead — auto-activate Wraith Step if unlocked
+            if (Movement.CanWraithStep)
+            {
+                var checkPos = Player.transform.position
+                    + Vector3.right * Movement.FacingDir * 1.2f;
+                int n = Physics.OverlapBoxNonAlloc(
+                    checkPos, new Vector3(0.25f, 0.45f, 0.5f),
+                    _phaseBuffer, Quaternion.identity, ~0);
+                for (int i = 0; i < n; i++)
+                {
+                    if (_phaseBuffer[i] != null &&
+                        _phaseBuffer[i].GetComponent<PhaseableWall>() != null)
+                    {
+                        Player.StopAfterimageTrail();
+                        Player.SetInvincible(false);
+                        Player.FSM.Transition("WraithStep");
+                        return;
+                    }
+                }
+            }
+
             if (!Movement.IsDashing)
             {
                 Player.StopAfterimageTrail();

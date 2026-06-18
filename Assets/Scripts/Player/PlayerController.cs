@@ -73,7 +73,9 @@ namespace MidnightReturn.Player
                .Add(new SubWeaponState(this))
                .Add(new CrouchState(this))
                .Add(new DragonKickState(this))
-               .Add(new ClimbState(this));
+               .Add(new ClimbState(this))
+               .Add(new SoulTetherState(this))
+               .Add(new WraithStepState(this));
             FSM.Transition("Idle");
         }
 

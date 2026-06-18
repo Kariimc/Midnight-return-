@@ -164,6 +164,49 @@ namespace MidnightReturn.VerticalSlice
                     0f),
                 "int_fragment",
                 pc => { pc.Stats.Int += 3; pc.Stats.MaxMp += 15; pc.Stats.Mp = pc.Stats.MaxMp; });
+
+            // Soul Tether pickup — on the hidden platform, col 24 (extended area)
+            BuildAbilityPickup(
+                new Vector3(
+                    VerticalSliceContent.ColX(24),
+                    VerticalSliceContent.SurfaceY(VerticalSliceContent.LEDGE_ROW) + 0.8f,
+                    0f),
+                "Soul Tether",
+                "While airborne, press Up+Spell to latch a spectral chain onto the ceiling and get yanked up.",
+                pm => pm.CanSoulTether = true,
+                new Color(0.5f, 0.1f, 1f));
+
+            // TetherAnchor: ceiling hook directly above the hidden platform (Room 1)
+            BuildTetherAnchor(new Vector3(
+                VerticalSliceContent.ColX(21),
+                VerticalSliceContent.SurfaceY(1),
+                0f));
+
+            // TetherAnchor: near the entrance arch
+            BuildTetherAnchor(new Vector3(
+                VerticalSliceContent.ColX(5),
+                VerticalSliceContent.SurfaceY(2),
+                0f));
+
+            // PhaseableWall: thin wall at col 25 between the hidden platform and the
+            // right platform — lets you Wraith Step through to reach the high platform.
+            BuildPhaseableWall(
+                new Vector3(
+                    VerticalSliceContent.ColX(25),
+                    VerticalSliceContent.SurfaceY(VerticalSliceContent.LEDGE_ROW) + 1f,
+                    0f),
+                new Vector3(0.3f, 3f, 1f));
+
+            // Wraith Step pickup — on the high-right platform, reward for phasing through
+            BuildAbilityPickup(
+                new Vector3(
+                    VerticalSliceContent.ColX(30),
+                    VerticalSliceContent.SurfaceY(VerticalSliceContent.PLAT_ROW) + 0.8f,
+                    0f),
+                "Wraith Step",
+                "Dash into a shimmering wall to phase through it as a ghost.",
+                pm => pm.CanWraithStep = true,
+                new Color(0.3f, 0.8f, 1f));
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -218,6 +261,17 @@ namespace MidnightReturn.VerticalSlice
                     CatacombsContent.ColX(16),
                     CatacombsContent.SurfaceY(3) + 0.5f,
                     0f));
+
+            // TetherAnchors in Room 2 (ceiling hooks above platforms)
+            BuildTetherAnchor(new Vector3(CatacombsContent.ColX(18), CatacombsContent.SurfaceY(1), 0f));
+            BuildTetherAnchor(new Vector3(CatacombsContent.ColX(39), CatacombsContent.SurfaceY(1), 0f));
+
+            // PhaseableWall between LOW platform right edge and right floor section
+            BuildPhaseableWall(
+                new Vector3(CatacombsContent.ColX(25),
+                            CatacombsContent.SurfaceY(CatacombsContent.LOW_PLAT_ROW) + 1f,
+                            0f),
+                new Vector3(0.3f, 2.5f, 1f));
 
             // Iron Gate at the far-right exit: blocks the stub Room 3 passage.
             // Requires Double Jump — player must backtrack to Room 1 after Air Dash.
@@ -493,6 +547,53 @@ namespace MidnightReturn.VerticalSlice
             boss.Configure(data);
 
             EventBus.Emit(new BossStartedEvent { BossId = "death" });
+        }
+
+        private void BuildTetherAnchor(Vector3 pos)
+        {
+            var go = new GameObject("TetherAnchor");
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            var col = go.AddComponent<SphereCollider>();
+            col.isTrigger = true;
+            col.radius    = 0.4f;
+
+            go.AddComponent<TetherAnchor>();
+
+            // Faint glow light so players can spot anchors in dark environments
+            var light = go.AddComponent<Light>();
+            light.type      = LightType.Point;
+            light.range     = 3f;
+            light.intensity = 0.6f;
+            light.color     = new Color(0.45f, 0.1f, 1f);
+        }
+
+        private void BuildPhaseableWall(Vector3 pos, Vector3 size)
+        {
+            var go = new GameObject("PhaseableWall");
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            var box = go.AddComponent<BoxCollider>();
+            box.size = size;
+
+            var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            vis.name = "Visual";
+            vis.transform.SetParent(go.transform, false);
+            vis.transform.localScale = size;
+            if (vis.TryGetComponent<Collider>(out var c)) Destroy(c);
+
+            var sh  = Shader.Find("HDRP/Lit")
+                   ?? Shader.Find("Universal Render Pipeline/Lit")
+                   ?? Shader.Find("Standard");
+            var mat = new Material(sh);
+            if (mat.HasProperty("_BaseColor"))     mat.SetColor("_BaseColor",     new Color(0.3f, 0.05f, 0.7f, 0.4f));
+            if (mat.HasProperty("_EmissiveColor")) mat.SetColor("_EmissiveColor", new Color(0.2f, 0.02f, 0.5f));
+            mat.renderQueue = 3000;
+            vis.GetComponent<MeshRenderer>().sharedMaterial = mat;
+
+            go.AddComponent<PhaseableWall>();
         }
 
         private void BuildExitDoor(Vector3 pos, float wallHeight)

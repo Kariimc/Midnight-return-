@@ -43,6 +43,11 @@ namespace MidnightReturn.Player
         public bool CanWallJump    = true;
         public bool CanAirDash     = false;
         public bool CanWallCling   = true;
+        public bool CanSoulTether  = false;
+        public bool CanWraithStep  = false;
+
+        // Suppresses the physics tick while WraithStepState drives CC directly.
+        public bool IsSuppressed   { get; set; }
 
         // ── Public state ──────────────────────────────────────────────────────
         public Vector2 Velocity      { get; private set; }
@@ -143,6 +148,7 @@ namespace MidnightReturn.Player
 
         public void Tick(float dt, PlayerInputHandler input)
         {
+            if (IsSuppressed) return;
             SyncGroundState();
             UpdateTimers(dt);
 

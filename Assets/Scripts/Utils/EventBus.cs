@@ -58,7 +58,11 @@ namespace MidnightReturn.Utils
     public struct SaveStatueActivatedEvent    { public string StatueId; }
 
     // ── Audio / dynamic-mix events ─────────────────────────────────────
-    public struct MusicZoneChangedEvent   { public MidnightReturn.Map.ZoneType Zone; public string TrackName; }
-    public struct CombatIntensityEvent    { public float Intensity; } // 0..1, drives adaptive layering
+    public struct MusicZoneChangedEvent    { public MidnightReturn.Map.ZoneType Zone; public string TrackName; }
+    public struct CombatIntensityEvent     { public float Intensity; } // 0..1, drives adaptive layering
     public struct MusicStateChangedEvent   { public string State; }    // "Explore" | "Combat" | "Boss" | "Silent"
+
+    // ── Ability traversal events ────────────────────────────────────────
+    public struct SoulTetherLatchedEvent   { public UnityEngine.Vector3 AnchorPos; }
+    public struct WraithStepActivatedEvent { public UnityEngine.Vector3 WallPos; }
 }

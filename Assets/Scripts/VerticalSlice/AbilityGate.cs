@@ -5,8 +5,8 @@ using MidnightReturn.Utils;
 
 namespace MidnightReturn.VerticalSlice
 {
-    public enum GateType       { Spectral, IronGate, CrackedWall }
-    public enum RequiredAbility { AirDash, DoubleJump, WallJump }
+    public enum GateType        { Spectral, IronGate, CrackedWall }
+    public enum RequiredAbility { AirDash, DoubleJump, WallJump, SoulTether, WraithStep }
 
     // ══════════════════════════════════════════════════════════════════════════
     //  AbilityGate — code-placed passage blocker with three visual archetypes.
@@ -55,6 +55,8 @@ namespace MidnightReturn.VerticalSlice
             RequiredAbility.AirDash    => pm.CanAirDash,
             RequiredAbility.DoubleJump => pm.CanDoubleJump,
             RequiredAbility.WallJump   => pm.CanWallJump,
+            RequiredAbility.SoulTether => pm.CanSoulTether,
+            RequiredAbility.WraithStep => pm.CanWraithStep,
             _                          => false,
         };
 

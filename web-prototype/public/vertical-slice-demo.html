@@ -88,10 +88,11 @@ canvas{display:block;background:#08060f;}
 
 <div class="help">
   <span class="tag">← →</span> move &nbsp; <span class="tag">↑ ↓</span> climb ladder &nbsp;
-  <span class="tag">Z / Space</span> jump &nbsp; <span class="tag">Z×2</span> double jump (after unlock) &nbsp; <span class="tag">J</span> attack &nbsp;
+  <span class="tag">Z / Space</span> jump &nbsp; <span class="tag">Z×2</span> double jump &nbsp; <span class="tag">J</span> attack &nbsp;
   <span class="tag">K</span> sub-weapon (10 MP) &nbsp; <span class="tag">E</span> save (at statue) &nbsp; <span class="tag">X</span> air dash (after boss) &nbsp;
-  <span class="tag">R</span> reset
-  <br><b>Goal:</b> clear enemies → defeat Death (Air Dash) → use Air Dash to find Double Jump → reach the secret ledge above Catacombs.
+  <span class="tag">T</span> soul tether (airborne — chain to ceiling hook) &nbsp;
+  dash into a <b>shimmering purple wall</b> to phase through (Wraith Step) &nbsp; <span class="tag">R</span> reset
+  <br><b>Loop:</b> kill enemies → defeat Death → Air Dash → hidden platform (Double Jump + Soul Tether + Wraith Step) → iron gate opens → Clocktower
 </div>
 
 <script>
@@ -121,7 +122,7 @@ const ladderX0=LADDER_COL*S, ladderX1=(LADDER_COL+1)*S,
 const spawn={x:3*S+4,y:FLOOR_ROW*S-30};
 const P={x:spawn.x,y:spawn.y,w:14,h:30,vx:0,vy:0,face:1,grounded:false,
          climbing:false,hp:120,mhp:120,mp:60,mmp:60,lv:1,exp:0,enext:100,
-         iframes:0,atk:0,coyote:0,jumpHeld:false,jumpT:0};
+         iframes:0,atk:0,coyote:0,jumpHeld:false,jumpT:0,wraith:0};
 
 function mkEnemy(o){return Object.assign({w:18,h:30,vx:0,face:-1,cd:0,hitFlash:0,dead:0,
   dissolve:0},o);}
@@ -136,7 +137,8 @@ function resetEnemies(){
   ];
 }
 resetEnemies();
-set(10,20,1);set(10,21,1);set(10,22,1);
+// Hidden platform cols 20-24, row 10 (extended for Soul Tether pickup)
+set(10,20,1);set(10,21,1);set(10,22,1);set(10,23,1);set(10,24,1);
 
 const statue={x:33*S,y:PLAT_ROW*S-28,r:38,used:false,glow:0};
 
@@ -174,20 +176,31 @@ const BOSS_TRIGGER_X = 36 * S; // player crosses this x in Room 2 to spawn boss
 // ── Ability gates ─────────────────────────────────────────────────────────────
 let doubleJumpUnlocked = false;
 let P_djUsed = false;  // double jump used this airtime
+let soulTetherUnlocked = false;
+let wraithStepUnlocked = false;
 
-// Gate objects: {x, y, w, h, type, req, dissolved, dissolveT}
+// Active tether pull: {anchorX, anchorY, t, maxT}
+let tether = null;
+
+// Gate objects: {x, y, w, h, type, req, dissolved, dissolveT, room}
 // type: 'spectral'|'iron'|'cracked'
-// req: 'airDash'|'doubleJump'
+// req: 'airDash'|'doubleJump'|'soulTether'|'wraithStep'
 let gates = [];
 
-// Ability pickup orbs: {x, y, r, ability, abilityName, desc, color, bob, collected}
+// Ability pickup orbs: {x, y, r, ability, abilityName, desc, color, bob, collected, room}
 let abilityOrbs = [];
 
-// Lore pickups: {x, y, w, h, collected}
+// Lore pickups: {x, y, w, h, collected, room}
 let lorePickups = [];
 
 // Stat pickups: {x, y, r, bob, collected, room, apply}
 let statPickups = [];
+
+// Tether anchors: {x, y, room} — latch points for Soul Tether
+let anchors = [];
+
+// Phaseable walls: {x, y, w, h, room} — pass through with Wraith Step
+let phaseWalls = [];
 
 // Acquisition fanfare state
 let fanfare = null; // {phase, t, name, desc, barH, waitInput, done}
@@ -232,7 +245,8 @@ function reset(){
   rect(FLOOR_ROW,PIT0,ROWS-1,PIT1,0);
   rect(LEDGE_ROW,LEDGE0,LEDGE_ROW,LEDGE1,1);
   rect(PLAT_ROW,PLAT0,PLAT_ROW,PLAT1,1);
-  set(10,20,1);set(10,21,1);set(10,22,1);
+  // Hidden platform cols 20-24, row 10 (extended for Soul Tether pickup)
+set(10,20,1);set(10,21,1);set(10,22,1);set(10,23,1);set(10,24,1);
   spawnCur={x:spawn.x,y:spawn.y};
   ladderX0Cur=ladderX0;ladderX1Cur=ladderX1;
   ladderTopCur=ladderTop;ladderBotCur=ladderBot;
@@ -241,7 +255,10 @@ function reset(){
   resetEnemies();statue.used=false;statue._used=false;shots=[];particles=[];dust=[];
   boss=null; bossTriggered=false; airDashUnlocked=false; airDashes=0; airDashCd=0;
   doubleJumpUnlocked=false; P_djUsed=false;
-  gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; fanfare=null; Time_frozen=false;
+  soulTetherUnlocked=false; wraithStepUnlocked=false;
+  tether=null; P.wraith=0;
+  gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
+  fanfare=null; Time_frozen=false;
   initRoom1Gates();
 }
 
@@ -735,7 +752,7 @@ function initRoom1Gates(){
     dissolved:false, dissolveT:0,
     room:1
   });
-  // Double Jump pickup orb on the hidden platform at cols 20-22, row 10
+  // Double Jump pickup orb on the hidden platform at col 21, row 10
   abilityOrbs.push({
     x:21*S+4, y:10*S-24,
     r:10, ability:'doubleJump',
@@ -744,11 +761,34 @@ function initRoom1Gates(){
     color:'#44aaff',
     bob:0, collected:false, room:1
   });
-  // INT Fragment stat pickup at col 22 on the hidden platform
+  // INT Fragment stat pickup at col 22
   statPickups.push({
     x:22*S+S/2, y:10*S-12,
     r:7, bob:0, collected:false, room:1,
     apply:(p)=>{ p.mmp+=15; p.mp=p.mmp; toast('✦ INT Fragment — MaxMP +15!'); }
+  });
+  // Soul Tether pickup at col 24 (extended hidden platform)
+  abilityOrbs.push({
+    x:24*S+S/2, y:10*S-24,
+    r:10, ability:'soulTether',
+    abilityName:'Soul Tether',
+    desc:'Airborne + T: latch a spectral chain onto a ceiling hook and get yanked up.',
+    color:'#aa44ff',
+    bob:1.5, collected:false, room:1
+  });
+  // TetherAnchors in Room 1 (ceiling hooks that the chain can latch onto)
+  anchors.push({x:21*S+S/2, y:S,   room:1}); // above hidden platform
+  anchors.push({x:5*S+S/2,  y:2*S, room:1}); // near entrance arch
+  // PhaseableWall at col 25, rows 8-12 — blocks access to high platform without Wraith Step
+  phaseWalls.push({x:25*S, y:8*S, w:4, h:4*S, room:1});
+  // Wraith Step pickup on high platform at col 30, row 8
+  abilityOrbs.push({
+    x:30*S+S/2, y:PLAT_ROW*S-24,
+    r:10, ability:'wraithStep',
+    abilityName:'Wraith Step',
+    desc:'Dash (X in air) into a shimmering purple wall to phase through as a ghost.',
+    color:'#33bbff',
+    bob:3.0, collected:false, room:1
   });
 }
 
@@ -772,6 +812,11 @@ function initRoom2Gates(){
     x:16*S, y:3*S-16, w:12, h:16,
     collected:false, room:2
   });
+  // TetherAnchors in Room 2 (ceiling hooks above platforms + boss area)
+  anchors.push({x:18*S+S/2, y:S,   room:2}); // above MID platform
+  anchors.push({x:39*S+S/2, y:S,   room:2}); // above boss arena
+  // PhaseableWall at col 24, rows 9-12 (between MID platform right edge and void)
+  phaseWalls.push({x:24*S, y:R2.MID_ROW*S, w:4, h:3*S, room:2});
 }
 
 // ── Fanfare system ─────────────────────────────────────────────────────────────
@@ -906,6 +951,35 @@ function update(){
     }
     // Restore air dash on landing
     if(P.grounded && airDashUnlocked && airDashes===0) airDashes=1;
+
+    // ── Soul Tether [T] — fire chain to nearest ceiling anchor ───────────────
+    if(soulTetherUnlocked && K['t'] && !P.grounded && !tether){
+      K['t']=false;
+      const cands=anchors
+        .filter(a=>a.room===currentRoom)
+        .map(a=>({...a,dist:Math.hypot((P.x+P.w/2)-a.x,(P.y+P.h/2)-a.y)}))
+        .filter(a=>a.y<=P.y+P.h*0.5 && a.dist<220) // must be above player
+        .sort((a,b)=>a.dist-b.dist);
+      if(cands.length>0){
+        tether={anchorX:cands[0].x,anchorY:cands[0].y,t:0,maxT:22};
+        addParticles(P.x+P.w/2,P.y+P.h/2,'#9933cc',8);
+      }
+    }
+    // Active tether — pull player toward anchor, override velocity
+    if(tether){
+      tether.t++;
+      const tdx=tether.anchorX-(P.x+P.w/2), tdy=tether.anchorY-(P.y+P.h/2);
+      const td=Math.hypot(tdx,tdy);
+      if(td<18||tether.t>=tether.maxT||P.grounded){
+        tether=null; P.vy=-2.5; // small bounce when arriving
+      } else {
+        P.vx=(tdx/td)*9; P.vy=(tdy/td)*9;
+        moveAxis(P,P.vx,0); moveAxis(P,0,P.vy);
+      }
+    }
+
+    // ── Wraith Step countdown ─────────────────────────────────────────────────
+    if(P.wraith>0) P.wraith--;
   }
 
   // fell in pit
@@ -982,7 +1056,8 @@ function update(){
     if(g.dissolveT>0){g.dissolveT--;if(g.dissolveT<=0)g.dissolved=true;continue;}
     // Check if player is touching gate
     if(P.x<g.x+g.w&&P.x+P.w>g.x&&P.y<g.y+g.h&&P.y+P.h>g.y){
-      const hasReq=(g.req==='airDash'&&airDashUnlocked)||(g.req==='doubleJump'&&doubleJumpUnlocked);
+      const hasReq=(g.req==='airDash'&&airDashUnlocked)||(g.req==='doubleJump'&&doubleJumpUnlocked)||
+                  (g.req==='soulTether'&&soulTetherUnlocked)||(g.req==='wraithStep'&&wraithStepUnlocked);
       if(hasReq){
         g.dissolveT=30; // 0.5s dissolve
         shake=3;
@@ -1006,9 +1081,31 @@ function update(){
       shake=4;
       addParticles(cx,cy,'#44aaff',30);
       startFanfare(o.abilityName, o.desc, ()=>{
-        if(o.ability==='doubleJump') doubleJumpUnlocked=true;
+        if(o.ability==='doubleJump')  doubleJumpUnlocked=true;
+        if(o.ability==='soulTether')  soulTetherUnlocked=true;
+        if(o.ability==='wraithStep')  wraithStepUnlocked=true;
         toast('✦ '+o.abilityName+' — now available!');
       });
+    }
+  }
+
+  // Phaseable walls — pass through with Wraith Step (air dash into them)
+  for(const pw of phaseWalls){
+    if(pw.room!==currentRoom)continue;
+    const hit=P.x<pw.x+pw.w&&P.x+P.w>pw.x&&P.y<pw.y+pw.h&&P.y+P.h>pw.y;
+    if(!hit)continue;
+    if(wraithStepUnlocked && P.wraith>0){
+      // Ghost mode active — pass through, no collision
+    } else if(wraithStepUnlocked && (K['x']||Math.abs(P.vx)>5)){
+      // Dash into phaseable wall → activate Wraith Step ghost mode
+      P.wraith=28;
+      addParticles(P.x+P.w/2,P.y+P.h/2,'#8844ff',18);
+      P.vx=P.face*8; // push through at speed
+    } else {
+      // Solid bounce
+      if(P.vx>0&&P.x+P.w>pw.x)P.x=pw.x-P.w;
+      else if(P.vx<0&&P.x<pw.x+pw.w)P.x=pw.x+pw.w;
+      P.vx=0;
     }
   }
 
@@ -1358,8 +1455,8 @@ function draw(){
 
   // ── Hidden platforms (visible slabs) ─────────────────────────────────────
   if(currentRoom===1){
-    // Hidden platform at cols 20-22, row 10 (inside pit)
-    for(let c=20;c<=22;c++){
+    // Hidden platform at cols 20-24, row 10 (inside pit, extended for Soul Tether pickup)
+    for(let c=20;c<=24;c++){
       if(grid[10][c]===1){
         x.drawImage(STONE_VARS[tileVar(10,c)],c*S,10*S,S,S);
         x.fillStyle='rgba(255,255,255,0.12)'; x.fillRect(c*S,10*S,S,2);
@@ -1396,9 +1493,55 @@ function draw(){
     }
   }
 
+  // ── LAYER 7c: Phaseable walls ────────────────────────────────────────────
+  for(const pw of phaseWalls){
+    if(pw.room!==currentRoom)continue;
+    const shimmer=0.45+0.3*Math.sin(Date.now()/350+pw.x*0.05);
+    x.save();
+    x.globalAlpha=shimmer;
+    const pwg=x.createLinearGradient(pw.x,pw.y,pw.x,pw.y+pw.h);
+    pwg.addColorStop(0,'rgba(50,15,140,0.75)');
+    pwg.addColorStop(0.5,'rgba(110,40,240,0.9)');
+    pwg.addColorStop(1,'rgba(50,15,140,0.75)');
+    x.fillStyle=pwg; x.fillRect(pw.x,pw.y,pw.w,pw.h);
+    // Shiver lines
+    x.strokeStyle='rgba(170,100,255,0.5)'; x.lineWidth=0.8;
+    for(let yy=pw.y+5;yy<pw.y+pw.h;yy+=9){
+      x.beginPath();x.moveTo(pw.x,yy);
+      x.lineTo(pw.x+pw.w,yy+Math.sin(Date.now()/180+yy)*1.5);x.stroke();
+    }
+    x.strokeStyle='rgba(180,120,255,0.5)'; x.lineWidth=1.5;
+    x.strokeRect(pw.x,pw.y,pw.w,pw.h);
+    // Hint label
+    x.fillStyle='rgba(210,180,255,0.8)'; x.font='bold 7px monospace'; x.textAlign='center';
+    x.fillText(wraithStepUnlocked?'PHASE':'?',pw.x+pw.w/2,pw.y+pw.h*0.5+3);
+    x.textAlign='left'; x.restore();
+  }
+
+  // ── LAYER 7d: Tether anchors ─────────────────────────────────────────────
+  for(const a of anchors){
+    if(a.room!==currentRoom)continue;
+    const nearPlayer=Math.abs((P.x+P.w/2)-a.x)<3.5*S;
+    if(!soulTetherUnlocked && !nearPlayer)continue; // proximity reveal
+    const pulse=0.35+0.28*Math.sin(Date.now()/450+a.x*0.03);
+    x.save(); x.globalAlpha=pulse;
+    x.shadowColor='#6622aa'; x.shadowBlur=8;
+    // Hook silhouette
+    x.fillStyle='#7733bb';
+    x.fillRect(a.x-4,a.y-4,8,2);          // top bar
+    x.fillRect(a.x-1,a.y-4,2,7);          // stem
+    x.beginPath(); x.arc(a.x+2,a.y+4,2.5,0,Math.PI); x.fill(); // hook curl
+    // Glow dot
+    x.shadowBlur=14;
+    x.fillStyle='#cc88ff'; x.beginPath(); x.arc(a.x,a.y,3,0,7); x.fill();
+    x.shadowBlur=0; x.restore();
+  }
+
   // ── LAYER 8: Player ─────────────────────────────────────────────────────
   x.save();
   if(P.iframes>0&&Math.floor(P.iframes/4)%2)x.globalAlpha=.35;
+  // Wraith Step ghost tint
+  if(P.wraith>0){ x.globalAlpha=(x.globalAlpha||1)*0.55; }
   // Shadow
   x.fillStyle='rgba(0,0,0,0.3)'; x.fillRect(P.x+2,P.y+P.h,P.w-4,5);
   // Cloak (body)
@@ -1425,6 +1568,35 @@ function draw(){
     x.shadowBlur=0;
   }
   x.restore();
+
+  // ── Soul Tether chain ────────────────────────────────────────────────────
+  if(tether){
+    const px=P.x+P.w/2, py=P.y+P.h*0.3;
+    x.save();
+    x.globalAlpha=0.75+0.2*Math.sin(Date.now()/60);
+    x.strokeStyle='rgba(170,80,255,0.9)'; x.lineWidth=2.5; x.setLineDash([5,3]);
+    x.beginPath(); x.moveTo(px,py); x.lineTo(tether.anchorX,tether.anchorY); x.stroke();
+    x.setLineDash([]);
+    // Mid-chain spark
+    const mx=(px+tether.anchorX)/2+Math.sin(Date.now()/80)*4;
+    const my=(py+tether.anchorY)/2+Math.cos(Date.now()/80)*4;
+    x.shadowColor='#cc66ff'; x.shadowBlur=12;
+    x.fillStyle='rgba(220,160,255,0.95)'; x.beginPath(); x.arc(mx,my,3,0,7); x.fill();
+    // Anchor glow
+    x.shadowBlur=20;
+    x.fillStyle='#ffffff'; x.beginPath(); x.arc(tether.anchorX,tether.anchorY,5,0,7); x.fill();
+    x.shadowBlur=0;
+    x.restore();
+    addParticles(mx,my,'#9933cc',1); // trail sparks while pulling
+  }
+
+  // Wraith Step ghost overlay on player
+  if(P.wraith>0){
+    x.save(); x.globalAlpha=(P.wraith/28)*0.45;
+    x.shadowColor='#7733ff'; x.shadowBlur=18;
+    x.fillStyle='rgba(100,50,200,0.7)'; x.fillRect(P.x-3,P.y-3,P.w+6,P.h+6);
+    x.shadowBlur=0; x.restore();
+  }
 
   // ── LAYER 9: Particles ────────────────────────────────────────────────────
   for(const p of particles){

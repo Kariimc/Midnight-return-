@@ -15,6 +15,9 @@ namespace MidnightReturn.Player.States
         {
             if (Movement.IsGrounded)      { Player.FSM.Transition("Idle");       return; }
             if (Input.HasDash)             { Player.FSM.Transition("Dash");       return; }
+            // Up+Spell while airborne → Soul Tether fires chain to nearest anchor
+            if (Input.HasSpell && Input.IsPressingUp && Movement.CanSoulTether)
+                { Player.FSM.Transition("SoulTether"); return; }
             if (Input.HasSpell)            { Player.FSM.Transition("SubWeapon");  return; }
             if (Movement.CanClimb && (Input.IsPressingUp || Input.IsPressingDown))
                 { Player.FSM.Transition("Climb"); return; }
