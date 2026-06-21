@@ -1135,10 +1135,26 @@ function spawnDust(){
   dust=dust.filter(d=>d.life>0);
 }
 
-// ── Lighting canvas ───────────────────────────────────────────────────────────
+// ── Zone key-light settings (2.5D normal-map tile face simulation) ───────────
+// Each zone has a dominant light direction and color used to shade tile faces,
+// simulating what HDRP does automatically with point lights + normal maps.
+// dir: 1=light from left (torch on left wall), -1=from right, 0=top-down only.
+const ZONE_KEYLIGHT={
+  1:{topA:0.14, sideA:0.11, dir:1,  r:255,g:148,b:52},  // Entrance — warm torch orange
+  2:{topA:0.09, sideA:0.05, dir:0,  r:180,g:62, b:18},  // Catacombs — dim blood-red
+  3:{topA:0.13, sideA:0.06, dir:0,  r:130,g:196,b:228}  // Clocktower — cold steel-blue
+};
+const kl=()=>ZONE_KEYLIGHT[currentRoom]||ZONE_KEYLIGHT[1];
+
+// ── Lighting canvas (multiply darkness with point-light cutouts) ──────────────
 const lCv=document.createElement('canvas');
 lCv.width=W; lCv.height=H;
 const lc=lCv.getContext('2d');
+
+// ── Glow canvas (screen blend — colored light tinting over lit areas) ─────────
+const gCv=document.createElement('canvas');
+gCv.width=W; gCv.height=H;
+const gc=gCv.getContext('2d');
 
 // ── Ability gate + orb init ───────────────────────────────────────────────────
 function initRoom1Gates(){
@@ -1798,16 +1814,31 @@ function draw(){
     x.restore();
   }
 
-  // ── LAYER 3: Stone tiles (textured) ─────────────────────────────────────
+  // ── LAYER 3: Stone tiles (textured + directional face shading) ──────────
+  const K=kl();
+  const klCol=`rgba(${K.r},${K.g},${K.b},`;
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       if(grid[r][c]!==1)continue;
       const v=tileVar(r,c);
       x.drawImage(STONE_VARS[v], c*S, r*S, S, S);
-      // Extra top-face bevel on floor/platform tops (tile above is empty)
-      if(r>0 && grid[r-1][c]!==1){
-        x.fillStyle='rgba(255,255,255,0.12)';
-        x.fillRect(c*S, r*S, S, 2);
+      // Top face — zone-keyed key light hits horizontal surfaces from above
+      if(r>0&&grid[r-1][c]!==1){
+        x.fillStyle=klCol+K.topA+')';
+        x.fillRect(c*S,r*S,S,3);
+      }
+      // Side face — lit by directional torch (dir:1=light from left, lights right-facing edges)
+      if(K.dir===1&&c>0&&grid[r][c-1]!==1){
+        x.fillStyle=klCol+K.sideA+')';
+        x.fillRect(c*S,r*S,3,S);
+      } else if(K.dir===-1&&c<COLS-1&&grid[r][c+1]!==1){
+        x.fillStyle=klCol+K.sideA+')';
+        x.fillRect(c*S+S-3,r*S,3,S);
+      }
+      // Underside shadow — tiles always cast shadow on their own bottom edge
+      if(r<ROWS-1&&grid[r+1][c]!==1){
+        x.fillStyle='rgba(0,0,0,0.20)';
+        x.fillRect(c*S,r*S+S-3,S,3);
       }
     }
   }
@@ -2236,6 +2267,22 @@ function draw(){
   x.shadowColor='#ff1122'; x.shadowBlur=10;
   x.fillStyle='#ff3344'; x.fillRect(eyePx,P.y+3,3,3);
   x.shadowBlur=0;
+  // Torch rim light — warm directional edge on the side facing the nearest torch
+  if(currentRoom===1){
+    const Kl=kl();
+    for(const t of TORCHES){
+      const tdx=(P.x+P.w/2)-t.x, tdy=(P.y+P.h/2)-t.y;
+      const tdist=Math.hypot(tdx,tdy);
+      if(tdist<140){
+        const ri=Math.min(0.22,(1-tdist/140)*0.28);
+        x.save(); x.globalAlpha=ri;
+        x.fillStyle=`rgba(${Kl.r},${Kl.g},${Kl.b},0.95)`;
+        const rimFace=tdx<0?P.x:P.x+P.w-2; // lit edge faces toward torch
+        x.fillRect(rimFace,P.y+2,2,P.h-4);
+        x.restore();
+      }
+    }
+  }
   // Attack flash
   if(P.atk>6){
     x.globalAlpha=0.55;
@@ -2365,9 +2412,60 @@ function draw(){
     hitLight.t--;
   }
   lc.globalCompositeOperation='source-over';
-  // Composite onto main canvas
+  // Composite darkness onto main canvas (multiply — punches shadows into scene)
   x.globalCompositeOperation='multiply';
   x.drawImage(lCv,0,0);
+  x.globalCompositeOperation='source-over';
+
+  // ── LAYER 10b: Colored light tinting (screen blend — warm/cold zone glow) ──
+  // This gives lit areas their actual hue: orange from torches, blue from statue,
+  // teal from projectiles — simulating HDRP colored point lights in canvas.
+  gc.clearRect(0,0,W,H);
+  const Atm=atmos(), Klight=kl();
+  const torchCol=`rgba(${Klight.r},${Klight.g},${Klight.b},`;
+  if(currentRoom===1){
+    for(const t of TORCHES){
+      const fl=0.80+Math.sin(torchT*0.19)*0.20;
+      const tr=58+Math.sin(torchT*0.31)*16;
+      const tg=gc.createRadialGradient(t.x+3,t.y-4,0,t.x+3,t.y-4,tr*fl);
+      tg.addColorStop(0,torchCol+'0.26)');
+      tg.addColorStop(0.4,torchCol+'0.09)');
+      tg.addColorStop(1,'transparent');
+      gc.fillStyle=tg; gc.beginPath();gc.arc(t.x+3,t.y-4,tr*fl,0,7);gc.fill();
+    }
+  }
+  if(currentRoom===2){
+    // Catacombs: faint blood-red from below (reflected off pit floor)
+    const rg=gc.createLinearGradient(0,H*0.6,0,H);
+    rg.addColorStop(0,'transparent');
+    rg.addColorStop(1,torchCol+'0.06)');
+    gc.fillStyle=rg; gc.fillRect(0,0,W,H);
+  }
+  if(currentRoom===3){
+    // Clocktower: ambient cold overhead tint
+    const cg=gc.createLinearGradient(0,0,0,H*0.5);
+    cg.addColorStop(0,torchCol+'0.07)');
+    cg.addColorStop(1,'transparent');
+    gc.fillStyle=cg; gc.fillRect(0,0,W,H);
+  }
+  // Statue colored glow (blue-white or warm gold once activated)
+  if(currentRoom===1){
+    const sLr2=52+Math.sin(Date.now()/290)*14;
+    const sg2=gc.createRadialGradient(statue.x+10,statue.y+8,0,statue.x+10,statue.y+8,sLr2);
+    sg2.addColorStop(0,statue.used?'rgba(255,210,80,0.20)':'rgba(70,148,255,0.22)');
+    sg2.addColorStop(1,'transparent');
+    gc.fillStyle=sg2; gc.beginPath();gc.arc(statue.x+10,statue.y+8,sLr2,0,7);gc.fill();
+  }
+  // Projectile colored light
+  for(const s of shots){
+    const slg=gc.createRadialGradient(s.x,s.y,0,s.x,s.y,28);
+    slg.addColorStop(0,'rgba(120,200,255,0.24)'); slg.addColorStop(1,'transparent');
+    gc.fillStyle=slg; gc.beginPath();gc.arc(s.x,s.y,28,0,7);gc.fill();
+  }
+  x.globalCompositeOperation='screen';
+  x.globalAlpha=0.72;
+  x.drawImage(gCv,0,0);
+  x.globalAlpha=1;
   x.globalCompositeOperation='source-over';
 
   // ── LAYER 11: Zone color grade (FEAT-01 — per-zone multiply wash) ─────────

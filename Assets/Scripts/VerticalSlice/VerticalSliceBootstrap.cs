@@ -6,6 +6,7 @@ using MidnightReturn.Level;
 using MidnightReturn.Map;
 using MidnightReturn.Player;
 using MidnightReturn.Enemies.Types;
+using MidnightReturn.Systems;
 using MidnightReturn.Utils;
 
 namespace MidnightReturn.VerticalSlice
@@ -121,6 +122,22 @@ namespace MidnightReturn.VerticalSlice
             BuildStatue(
                 new Vector3(VerticalSliceContent.ColX(33),
                             VerticalSliceContent.SurfaceY(VerticalSliceContent.PLAT_ROW) + 0.05f, 0f));
+
+            // Wall-mounted torch sconces — two orange-warm point lights with organic flicker.
+            // These cast real-time HDRP shadows on tiles and characters (contact shadows on).
+            BuildTorchLight(
+                new Vector3(VerticalSliceContent.ColX(1),
+                            VerticalSliceContent.SurfaceY(6) - 0.5f, -0.2f),
+                TorchLightController.FlickerMode.Torch,
+                new Color(1.00f, 0.62f, 0.22f), new Color(1.00f, 0.36f, 0.08f),
+                intensityLux: 950f, range: 9f);
+
+            BuildTorchLight(
+                new Vector3(VerticalSliceContent.ColX(1),
+                            VerticalSliceContent.SurfaceY(12) - 0.5f, -0.2f),
+                TorchLightController.FlickerMode.Torch,
+                new Color(1.00f, 0.62f, 0.22f), new Color(1.00f, 0.36f, 0.08f),
+                intensityLux: 950f, range: 9f);
 
             BuildLadder(VerticalSliceContent.ColX(VerticalSliceContent.LADDER_COL),
                         VerticalSliceContent.SurfaceY(VerticalSliceContent.FLOOR_TOP_ROW),
@@ -456,11 +473,32 @@ namespace MidnightReturn.VerticalSlice
             if (col) Destroy(col);
             vis.GetComponent<MeshRenderer>().sharedMaterial = LitMaterial(new Color(0.2f, 0.35f, 0.8f));
 
+            // Crystal pulse light — blue-white, slow shimmer (activated: warm gold).
             var light = go.AddComponent<Light>();
-            light.type = LightType.Point; light.range = 6f; light.intensity = 2f;
-            light.color = new Color(0.3f, 0.5f, 1f);
+            light.type = LightType.Point;
+            TorchLightController.Configure(
+                go,
+                TorchLightController.FlickerMode.Crystal,
+                new Color(0.28f, 0.52f, 1.00f),  // primary: cool sapphire
+                new Color(0.80f, 0.90f, 1.00f),  // hot: white-shimmer
+                intensityLux: 600f,
+                range: 6.5f);
 
             go.AddComponent<SaveStatue>();
+        }
+
+        private void BuildTorchLight(
+            Vector3 pos,
+            TorchLightController.FlickerMode mode,
+            Color primary, Color hot,
+            float intensityLux, float range)
+        {
+            var go = new GameObject("TorchLight");
+            go.transform.position = pos;
+            _room1Objects.Add(go);
+
+            go.AddComponent<Light>().type = LightType.Point;
+            TorchLightController.Configure(go, mode, primary, hot, intensityLux, range);
         }
 
         private void BuildLadder(float x, float yBottom, float yTop)
