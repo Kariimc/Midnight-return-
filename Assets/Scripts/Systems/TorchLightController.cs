@@ -19,6 +19,9 @@ namespace MidnightReturn.Systems
     {
         public enum FlickerMode { Torch, Crystal, Pulse, None }
 
+        // Converts HDRP lux intensities to a sane Builtin/URP Light.intensity range.
+        private const float NON_HDRP_SCALE = 0.0025f;
+
         [SerializeField] private FlickerMode _mode          = FlickerMode.Torch;
         [SerializeField] private float       _baseIntensity = 800f;   // HDRP lux
         [SerializeField] private float       _flickerAmount = 0.24f;  // ± fraction of base
@@ -41,10 +44,16 @@ namespace MidnightReturn.Systems
             {
                 _hdLight.SetIntensity(_baseIntensity, LightUnit.Lux);
                 _hdLight.range = _range;
+                // Real-time shadow maps — this is what casts dynamic shadows from
+                // torches onto tiles and characters (the core 2.5D AAA jump).
                 _hdLight.EnableShadows(true);
-                // Soft contact shadows — key for 2.5D tile depth read.
-                _hdLight.contactShadows.enable.Override(true);
-                _hdLight.contactShadows.length.Override(0.04f);
+            }
+            else
+            {
+                // Non-HDRP fallback (e.g. URP/Builtin preview): use raw Light units.
+                _light.intensity = Mathf.Max(0f, _baseIntensity * NON_HDRP_SCALE);
+                _light.range     = _range;
+                _light.shadows   = LightShadows.Soft;
             }
 
             _light.color = _baseColor;
@@ -91,7 +100,7 @@ namespace MidnightReturn.Systems
             if (_hdLight != null)
                 _hdLight.SetIntensity(Mathf.Max(0f, newIntensity), LightUnit.Lux);
             else
-                _light.intensity = Mathf.Max(0f, newIntensity);
+                _light.intensity = Mathf.Max(0f, newIntensity * NON_HDRP_SCALE); // lux → Builtin range
 
             _light.color = newColor;
         }
@@ -111,7 +120,7 @@ namespace MidnightReturn.Systems
         {
             _baseIntensity = lux;
             if (_hdLight != null) _hdLight.SetIntensity(lux, LightUnit.Lux);
-            else                  _light.intensity = lux;
+            else                  _light.intensity = lux * NON_HDRP_SCALE;
         }
 
         // Called by VerticalSliceBootstrap to configure a freshly-spawned light GO.
