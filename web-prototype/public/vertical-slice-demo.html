@@ -24,25 +24,36 @@ canvas{display:block;background:#08060f;}
 
 /* ── stats panel (mirrors hud-final top-left) ── */
 .stats-tl{
-  position:absolute;top:10px;left:12px;z-index:10;
-  display:flex;flex-direction:column;gap:5px;
-  background:linear-gradient(135deg,rgba(14,11,5,.97),rgba(8,5,0,.97));
-  border:1px solid var(--g3);padding:8px 11px;width:200px;
-  box-shadow:0 0 16px rgba(0,0,0,.85),inset 0 1px 0 rgba(200,150,30,.08);
+  position:absolute;top:12px;left:14px;z-index:10;
+  display:flex;flex-direction:column;gap:6px;
+  padding:10px 13px 11px;width:214px;
+  background:linear-gradient(180deg,rgba(28,20,9,.97),rgba(10,6,2,.98));
+  border:1px solid #6b4a18;border-radius:2px;
+  box-shadow:0 0 0 1px #160f06,0 0 0 2px #2c1f0b,0 0 20px rgba(0,0,0,.9),
+    inset 0 0 0 1px rgba(190,150,60,.18),inset 0 1px 0 rgba(220,180,80,.16);
 }
+.stats-tl::before{content:'';position:absolute;left:9px;right:9px;top:4px;height:2px;
+  background:linear-gradient(90deg,transparent,#c89a3a 18%,#ffe7a0 50%,#c89a3a 82%,transparent);opacity:.75;}
+.stats-tl::after{content:'';position:absolute;right:-9px;top:21px;width:16px;height:16px;
+  transform:rotate(45deg);background:radial-gradient(circle at 38% 34%,#cfe6ff,#2a6bd0 55%,#0e2b66);
+  border:1px solid #6b4a18;box-shadow:0 0 10px rgba(60,130,255,.55),inset 0 0 4px rgba(255,255,255,.6);}
 .st-row{display:flex;align-items:center;gap:7px;}
 .st-ico{font-size:12px;width:14px;text-align:center;flex-shrink:0;}
-.st-ico.hp{color:#ff3333;text-shadow:0 0 6px rgba(255,40,40,.9);}
-.st-ico.mp{color:#3366ff;text-shadow:0 0 6px rgba(50,100,255,.9);}
-.st-trk{flex:1;height:10px;background:#060302;border:1px solid #3a2000;position:relative;overflow:hidden;box-shadow:inset 0 1px 4px rgba(0,0,0,.9);}
-.st-fill{position:absolute;inset:0;right:auto;transition:width .18s;}
-.st-fill.hp{background:linear-gradient(180deg,#ff8888,#dd1e1e 28%,#aa0e0e);box-shadow:0 0 8px rgba(255,20,20,.35);}
-.st-fill.mp{background:linear-gradient(180deg,#88aaff,#2255ee 28%,#1840cc);box-shadow:0 0 8px rgba(40,100,255,.35);}
-.st-val{font-size:10px;font-family:monospace;color:var(--g2);min-width:30px;text-align:right;flex-shrink:0;}
-.st-sep{height:1px;background:linear-gradient(90deg,transparent,rgba(200,150,30,.35) 30%,rgba(200,150,30,.35) 70%,transparent);}
+.st-ico.hp{color:#ff4444;text-shadow:0 0 6px rgba(255,40,40,.9);}
+.st-ico.mp{color:#5a8cff;text-shadow:0 0 6px rgba(50,100,255,.9);}
+.st-trk{flex:1;height:9px;background:linear-gradient(180deg,#1a0c06,#070302);border:1px solid #5a3a12;
+  position:relative;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.9);}
+.st-trk::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:repeating-linear-gradient(90deg,transparent 0 7px,rgba(0,0,0,.45) 7px 8px);}
+.st-fill{position:absolute;inset:0;right:auto;transition:width .18s;z-index:1;}
+.st-fill.hp{background:linear-gradient(180deg,#ff9a9a,#e22 26%,#9c0a0a);box-shadow:0 0 8px rgba(255,20,20,.4);}
+.st-fill.mp{background:linear-gradient(180deg,#9ab8ff,#2a5cf0 26%,#13379c);box-shadow:0 0 8px rgba(40,100,255,.4);}
+.st-val{font-size:11px;font-family:'Times New Roman',Georgia,serif;color:#ffe7a0;
+  text-shadow:0 1px 2px #000;min-width:30px;text-align:right;flex-shrink:0;}
+.st-sep{height:1px;background:linear-gradient(90deg,transparent,rgba(200,150,30,.4) 30%,rgba(200,150,30,.4) 70%,transparent);}
 .st-lv-row{display:flex;align-items:center;gap:6px;}
 .st-lv-lbl{font-size:9px;letter-spacing:1.5px;color:var(--g4);}
-.st-lv-num{font-size:13px;font-weight:700;color:#ffe890;min-width:18px;text-shadow:0 0 6px rgba(255,220,120,.5);}
+.st-lv-num{font-size:13px;font-weight:700;font-family:'Times New Roman',Georgia,serif;color:#ffe890;min-width:18px;text-shadow:0 0 6px rgba(255,220,120,.55);}
 .st-exp{flex:1;height:4px;background:#070402;border:1px solid #3a2400;}
 .st-exp-f{height:100%;background:linear-gradient(90deg,var(--g2),var(--g1));transition:width .4s;}
 
@@ -1051,7 +1062,8 @@ const PAL={
   verd:   ['#0c2a24','#1d5048','#3d867a','#74c6b1'],
   rust:   ['#241016','#4a2730','#8a3f29','#d06a34'],
   voidc:  ['#040208','#0c0818','#181128','#2c1f47'],
-  ghost:  ['#0a2230','#1d4a64','#4f86b8','#bfe2ff']
+  ghost:  ['#0a2230','#1d4a64','#4f86b8','#bfe2ff'],
+  amber:  ['#3a1c04','#7a3e0a','#c4720f','#f0a838']   // VHD cloak inner lining (ochre/orange)
 };
 const FLASHR=['#c8c8d4','#e2e2ec','#f4f4fa','#ffffff'];
 function mat(r,fl){ return fl?FLASHR:r; }
@@ -1079,123 +1091,134 @@ function softShadow(px,py,rx,ry,a){
   x.restore();
 }
 
-// ── Player: Alucard — heroic bishōnen, hue-shifted ramps, lagged cape/hair, alive-stack ──
+// ── Player: Vampire Hunter D × SOTN Alucard — wide-brim hat, amber-lined flared
+//    cloak, lean tall silhouette (renders above the hitbox), pointed shoulders,
+//    throat brooch, sword worn on the back. Light from upper-left + alive-stack. ──
 function drawPlayerSprite(bx,by,bw,bh,face,atk){
   const cx=bx+bw/2, now=Date.now();
   const moving   = P.grounded && Math.abs(P.vx)>1.2;
   const airborne = !P.grounded && !P.climbing;
-  // breath bob (idle only); lagged cloak/hair sway = ambient sine + drag opposite velocity
-  const breath = (!moving&&!airborne) ? Math.sin(now/650)*1.1 : 0;
-  const sway   = Math.sin(now/260)*2.2 - P.vx*0.7 + (airborne ? -P.vy*0.22 : 0);
-  const tail   = face>0 ? -1 : 1;            // trailing side (cape/hair)
+  const breath = (!moving&&!airborne) ? Math.sin(now/700)*1.0 : 0;
+  const sway   = Math.sin(now/300)*2.0 - P.vx*0.7 + (airborne ? -P.vy*0.2 : 0);
+  const tail   = face>0 ? -1 : 1;            // cloak trails opposite facing
+  const lead   = -tail;                      // facing side
   const ty     = by+breath;
-  const stride = moving ? Math.sin(now/90)*bw*0.16 : 0;
+  const stride = moving ? Math.sin(now/95)*bw*0.16 : 0;
+  const top    = ty-bh*0.20;                 // sprite extends above the collision box (hat)
+  const bodyW  = bw*0.5;
 
-  // ── CAPE (behind body): gothic ramp, frayed hem, lagged swing ──
+  // ── BACK CLOAK — dark exterior, wide flare to trailing side, lagged sway ──
   x.save();
-  const anchorX = cx - tail*bw*0.18;
-  const tipX    = cx + tail*bw*0.55 - sway*tail;
-  const cg=x.createLinearGradient(anchorX, ty+2, tipX, ty+bh*0.96);
-  cg.addColorStop(0,PAL.cloak[2]); cg.addColorStop(0.5,PAL.cloak[1]); cg.addColorStop(1,PAL.cloak[0]);
+  const hemX=cx+tail*bw*0.85 - sway*tail;
+  const cg=x.createLinearGradient(cx,ty,hemX,ty+bh*1.04);
+  cg.addColorStop(0,PAL.voidc[2]); cg.addColorStop(0.55,PAL.voidc[1]); cg.addColorStop(1,PAL.voidc[0]);
   x.fillStyle=cg;
   x.beginPath();
-  x.moveTo(anchorX, ty+2);
-  x.quadraticCurveTo(cx+tail*bw*0.5, ty+bh*0.3, tipX, ty+bh*0.72);
-  x.lineTo(tipX - tail*1.5, ty+bh*0.82);     // frayed hem
-  x.lineTo(tipX + tail*2,   ty+bh*0.9);
-  x.lineTo(tipX - tail*1,   ty+bh*0.98);
-  x.quadraticCurveTo(cx+tail*bw*0.16, ty+bh*0.7, anchorX - tail*bw*0.1, ty+bh*0.18);
+  x.moveTo(cx - tail*bw*0.1, ty+bh*0.1);
+  x.quadraticCurveTo(cx+tail*bw*0.2, ty+bh*0.02, cx+tail*bw*0.34, ty+bh*0.12);   // collar shoulder
+  x.quadraticCurveTo(cx+tail*bw*0.7, ty+bh*0.5, hemX, ty+bh*1.02);               // outer drape
+  x.lineTo(hemX - tail*bw*0.2, ty+bh*1.06);                                      // hem
+  x.quadraticCurveTo(cx+tail*bw*0.12, ty+bh*0.62, cx - tail*bw*0.08, ty+bh*0.5);
   x.closePath(); x.fill();
-  x.strokeStyle='rgba(150,115,230,0.32)'; x.lineWidth=1;   // inner-fold rim highlight
-  x.beginPath(); x.moveTo(anchorX-tail*bw*0.08, ty+bh*0.15);
-  x.quadraticCurveTo(cx+tail*bw*0.3, ty+bh*0.45, tipX-tail*1, ty+bh*0.7); x.stroke();
+  x.strokeStyle='rgba(210,120,30,0.5)'; x.lineWidth=1.4;                          // amber lining rim
+  x.beginPath(); x.moveTo(cx - tail*bw*0.05, ty+bh*0.5);
+  x.quadraticCurveTo(cx+tail*bw*0.1, ty+bh*0.75, hemX - tail*bw*0.17, ty+bh*1.04); x.stroke();
   x.restore();
 
-  // ── LEGS / BOOTS ──
-  drawLeg(cx - bw*0.2 - stride, ty+bh*0.56, bw*0.3, bh*0.44);
-  drawLeg(cx + bw*0.04 + stride, ty+bh*0.56, bw*0.32, bh*0.44);
-
-  // ── LOWER TUNIC ──
-  x.fillStyle=rampG(bx, ty+bh*0.42, bx+bw, ty+bh*0.62, PAL.cloak);
-  x.fillRect(bx+1, ty+bh*0.42, bw-2, bh*0.2);
-
-  // ── TORSO (cloak body) ──
-  x.fillStyle=rampG(bx, ty+bh*0.1, bx+bw, ty+bh*0.46, PAL.cloak);
+  // ── AMBER LINING reveal — open cloak front on the leading side ──
+  x.fillStyle=rampG(cx, ty+bh*0.4, cx+lead*bw*0.5, ty+bh*1.04, PAL.amber);
   x.beginPath();
-  x.moveTo(bx+1.5, ty+bh*0.46);
-  x.lineTo(bx+0.5, ty+bh*0.16);
-  x.quadraticCurveTo(cx, ty+bh*0.06, bx+bw-0.5, ty+bh*0.16);
-  x.lineTo(bx+bw-1.5, ty+bh*0.46);
+  x.moveTo(cx, ty+bh*0.46);
+  x.lineTo(cx+lead*bw*0.42, ty+bh*1.02);
+  x.lineTo(cx+lead*bw*0.06, ty+bh*1.05);
+  x.lineTo(cx, ty+bh*0.6);
   x.closePath(); x.fill();
-  x.fillStyle='rgba(154,115,230,0.2)'; x.fillRect(bx+2, ty+bh*0.14, 2.4, bh*0.26);  // sternum highlight
-  x.fillStyle='rgba(0,0,0,0.34)';      x.fillRect(bx+1, ty+bh*0.4, bw-2, 2);          // waist AO
+  x.fillStyle='rgba(255,200,110,0.18)';                                          // lining inner sheen
+  x.fillRect(cx+lead*bw*0.04, ty+bh*0.5, 1.4, bh*0.5);
 
-  // ── GOLD BELT + buckle (specular) ──
-  x.fillStyle=rampG(bx, ty+bh*0.44, bx+bw, ty+bh*0.49, PAL.gold);
-  x.fillRect(bx, ty+bh*0.44, bw, 3.2);
-  x.fillStyle=PAL.gold[0]; x.fillRect(cx-3, ty+bh*0.44, 6, 3.2);
-  x.fillStyle=PAL.gold[2]; x.fillRect(cx-2.4, ty+bh*0.44+0.6, 4.8, 2);
-  glowSpec(cx-1.4, ty+bh*0.44+1, 0.8, '#fff6cf');
+  // ── LEGS (lean, tall boots) ──
+  drawLeg(cx-bw*0.16-stride, ty+bh*0.56, bw*0.26, bh*0.46);
+  drawLeg(cx+bw*0.02+stride, ty+bh*0.56, bw*0.27, bh*0.46);
 
-  // ── COLLAR (crimson, raised wings asymmetric, gold trim) ──
-  x.fillStyle=rampG(bx-3, ty+bh*0.02, bx+bw+3, ty+bh*0.12, PAL.crimson);
-  x.beginPath();   // back wing (taller)
-  x.moveTo(cx - tail*1, ty+bh*0.12);
-  x.lineTo(cx - tail*bw*0.5, ty - bh*0.06);
-  x.lineTo(cx - tail*bw*0.18, ty+bh*0.1); x.closePath(); x.fill();
-  x.beginPath();   // front wing (shorter)
-  x.moveTo(cx + tail*1, ty+bh*0.12);
-  x.lineTo(cx + tail*bw*0.42, ty - bh*0.01);
-  x.lineTo(cx + tail*bw*0.16, ty+bh*0.1); x.closePath(); x.fill();
-  x.fillStyle=rampG(bx-2, ty+bh*0.08, bx+bw+2, ty+bh*0.16, PAL.crimson);
-  x.fillRect(bx-1.5, ty+bh*0.09, bw+3, bh*0.06);
-  x.fillStyle=PAL.gold[2];               x.fillRect(bx-1.5, ty+bh*0.145, bw+3, 0.8);  // trim
-  x.fillStyle='rgba(255,90,110,0.4)';    x.fillRect(bx-1.5, ty+bh*0.09, bw+3, 1);     // spec
-
-  // ── HEAD ──
-  const hx=cx+face*0.5, hyT=ty-bh*0.02;
-  x.fillStyle=rampG(hx-bw*0.4, hyT, hx+bw*0.4, hyT+bh*0.2, PAL.steel);    // hair back mass
+  // ── BODYSUIT torso (dark indigo, lean) ──
+  const bL=cx-bodyW/2, bR=cx+bodyW/2;
+  x.fillStyle=rampG(bL, ty+bh*0.12, bR, ty+bh*0.54, PAL.cloak);
   x.beginPath();
-  x.moveTo(hx-bw*0.34, hyT+bh*0.02);
-  x.quadraticCurveTo(hx+tail*bw*0.2, hyT-bh*0.05, hx+bw*0.34, hyT+bh*0.04);
-  x.lineTo(hx+tail*bw*0.5 - sway*tail*0.4, hyT+bh*0.3);                   // trailing strand
-  x.quadraticCurveTo(hx+tail*bw*0.2, hyT+bh*0.14, hx-bw*0.2, hyT+bh*0.18);
+  x.moveTo(bL, ty+bh*0.52);
+  x.lineTo(bL-0.5, ty+bh*0.2);
+  x.quadraticCurveTo(cx, ty+bh*0.12, bR+0.5, ty+bh*0.2);
+  x.lineTo(bR, ty+bh*0.52);
   x.closePath(); x.fill();
-  x.fillStyle=rampG(hx-bw*0.28, hyT+bh*0.02, hx+bw*0.28, hyT+bh*0.12, PAL.flesh);  // face
-  x.fillRect(hx-bw*0.26, hyT+bh*0.03, bw*0.52, bh*0.1);
-  x.fillStyle='rgba(60,30,40,0.5)'; x.fillRect(hx-bw*0.2, hyT+bh*0.11, bw*0.4, 1.4);  // jaw AO
-  x.fillStyle=rampG(hx-bw*0.3, hyT, hx+bw*0.3, hyT+bh*0.06, PAL.steel);  // front fringe
-  x.beginPath();
-  x.moveTo(hx-bw*0.28, hyT+bh*0.05);
-  x.quadraticCurveTo(hx, hyT-bh*0.02, hx+bw*0.28, hyT+bh*0.05);
-  x.lineTo(hx+bw*0.18, hyT+bh*0.06);
-  x.lineTo(hx+bw*0.02, hyT+bh*0.02);
-  x.lineTo(hx-bw*0.16, hyT+bh*0.06);
-  x.closePath(); x.fill();
-  x.strokeStyle='rgba(220,228,255,0.5)'; x.lineWidth=0.8;                // hair highlight
-  x.beginPath(); x.moveTo(hx-bw*0.2, hyT+bh*0.03); x.quadraticCurveTo(hx, hyT-bh*0.005, hx+bw*0.2, hyT+bh*0.03); x.stroke();
-  glowDot(hx+face*bw*0.12, hyT+bh*0.08, 1.4, '#ff2e44', 9);              // red glowing eye
+  x.fillStyle='rgba(150,120,210,0.18)'; x.fillRect(bL+0.5, ty+bh*0.18, 1.6, bh*0.3);  // chest highlight
+  x.strokeStyle='rgba(0,0,0,0.3)'; x.lineWidth=0.6;                                    // center seam
+  x.beginPath(); x.moveTo(cx, ty+bh*0.2); x.lineTo(cx, ty+bh*0.5); x.stroke();
 
-  // ── SWORD + attack ──
-  drawPlayerSword(bx,by,bw,bh,face,atk,ty);
+  // ── BELT + buckle (amber) ──
+  x.fillStyle=rampG(bL, ty+bh*0.5, bR, ty+bh*0.55, PAL.amber);
+  x.fillRect(bL-0.5, ty+bh*0.5, bodyW+1, 2.6);
+  x.fillStyle='#1a0f06'; x.fillRect(cx-2, ty+bh*0.5, 4, 2.6);
+  glowSpec(cx, ty+bh*0.5+1.2, 0.7, '#ffcf7a');
+
+  // ── POINTED SHOULDER GUARDS (VHD/Alucard upturned points) ──
+  x.fillStyle=rampG(bL-3, ty+bh*0.08, bR+3, ty+bh*0.2, PAL.voidc);
+  for(const s of [-1,1]){
+    x.beginPath();
+    x.moveTo(cx+s*bodyW*0.5, ty+bh*0.2);
+    x.lineTo(cx+s*bw*0.42, ty+bh*0.03);
+    x.lineTo(cx+s*bodyW*0.42, ty+bh*0.16);
+    x.closePath(); x.fill();
+  }
+  x.strokeStyle='rgba(200,150,40,0.5)'; x.lineWidth=0.8;                          // gold edge
+  for(const s of [-1,1]){ x.beginPath(); x.moveTo(cx+s*bodyW*0.5, ty+bh*0.2); x.lineTo(cx+s*bw*0.42, ty+bh*0.03); x.stroke(); }
+
+  // ── THROAT BROOCH (blue gem) ──
+  glowDot(cx, ty+bh*0.18, 1.7, '#4a90e0', 11);
+
+  // ── NECK + FACE (pale gaunt) ──
+  x.fillStyle=rampG(cx-bw*0.18, ty, cx+bw*0.18, ty+bh*0.12, PAL.flesh);
+  x.fillRect(cx-bw*0.16, ty+bh*0.0, bw*0.32, bh*0.12);
+  x.fillStyle='rgba(40,20,30,0.45)'; x.fillRect(cx-bw*0.14, ty+bh*0.1, bw*0.28, 1.2);   // jaw AO
+
+  // ── HAT — wide brim + crown, shadows the eyes (VHD signature) ──
+  x.fillStyle=rampG(cx-bw*0.5, top, cx+bw*0.5, top+bh*0.14, PAL.voidc);
+  x.beginPath();                                                                  // crown
+  x.moveTo(cx-bw*0.26, ty+bh*0.03);
+  x.quadraticCurveTo(cx-bw*0.22, top, cx, top-bh*0.01);
+  x.quadraticCurveTo(cx+bw*0.22, top, cx+bw*0.26, ty+bh*0.03);
+  x.closePath(); x.fill();
+  x.beginPath();                                                                  // wide brim (tilt toward facing)
+  x.moveTo(cx-bw*0.6, ty+bh*0.03);
+  x.quadraticCurveTo(cx, ty-bh*0.02+face*0.4, cx+bw*0.6, ty+bh*0.03);
+  x.quadraticCurveTo(cx+bw*0.5, ty+bh*0.065, cx, ty+bh*0.06);
+  x.quadraticCurveTo(cx-bw*0.5, ty+bh*0.065, cx-bw*0.6, ty+bh*0.03);
+  x.closePath(); x.fill();
+  x.fillStyle='rgba(0,0,0,0.45)'; x.fillRect(cx-bw*0.16, ty+bh*0.04, bw*0.32, bh*0.035);  // brim shadow on face
+  x.strokeStyle='rgba(120,90,40,0.5)'; x.lineWidth=0.8;                                    // hat band
+  x.beginPath(); x.moveTo(cx-bw*0.2, ty+bh*0.028); x.quadraticCurveTo(cx, ty+bh*0.008, cx+bw*0.2, ty+bh*0.028); x.stroke();
+
+  // ── GLOWING EYES (from hat shadow) ──
+  glowDot(cx+face*bw*0.08, ty+bh*0.08, 1.1, '#ffd24a', 8);
+
+  // ── BACK SWORD + attack ──
+  drawPlayerSword(bx,by,bw,bh,face,atk,ty,tail);
 }
 
 function drawLeg(lx,ly,lw,lh){
   const g=x.createLinearGradient(lx,ly,lx+lw,ly+lh);
-  g.addColorStop(0,'#241830'); g.addColorStop(0.6,'#160f22'); g.addColorStop(1,'#0c0816');
-  x.fillStyle=g; x.fillRect(lx,ly,lw,lh*0.62);                          // trouser
-  x.fillStyle='#1a0f0a'; x.fillRect(lx-0.5,ly+lh*0.6,lw+1,lh*0.4);      // boot
-  x.fillStyle='rgba(90,60,30,0.5)'; x.fillRect(lx-0.5,ly+lh*0.6,lw+1,1.4);  // cuff
-  x.fillStyle='rgba(120,80,40,0.6)'; x.fillRect(lx-0.5,ly+lh-2,3,2);    // toe rivet
+  g.addColorStop(0,'#1c1430'); g.addColorStop(0.55,'#120d20'); g.addColorStop(1,'#0a0714');
+  x.fillStyle=g; x.fillRect(lx,ly,lw,lh*0.5);                            // thigh
+  x.fillStyle='#100a18'; x.fillRect(lx,ly+lh*0.48,lw,lh*0.52);          // tall boot (lean)
+  x.fillStyle='rgba(90,70,40,0.45)'; x.fillRect(lx-0.4,ly+lh*0.48,lw+0.8,1.2);  // boot cuff
+  x.fillStyle='rgba(150,120,60,0.4)'; x.fillRect(lx-0.4,ly+lh-1.6,2.4,1.6);     // toe sheen
 }
 
-function drawPlayerSword(bx,by,bw,bh,face,atk,ty){
+function drawPlayerSword(bx,by,bw,bh,face,atk,ty,tail){
   const cx=bx+bw/2;
   if(atk>0){
     const p=(14-atk)/14;                          // 0 wind-up → 1 follow-through
-    const ang = face>0 ? (-1.0 + p*2.1) : (Math.PI+1.0 - p*2.1);  // anticipation → sweep
-    const len = bh*0.92;
-    const gx=cx+face*bw*0.3, gy=ty+bh*0.42;
+    const ang = face>0 ? (-1.0 + p*2.1) : (Math.PI+1.0 - p*2.1);
+    const len = bh*0.98;
+    const gx=cx+face*bw*0.28, gy=ty+bh*0.34;
     const tipx=gx+Math.cos(ang)*len, tipy=gy+Math.sin(ang)*len;
     if(p>0.2&&p<0.8){                             // smear arc on active frames
       x.save(); x.globalAlpha=0.5; x.strokeStyle='rgba(190,215,255,0.6)';
@@ -1207,16 +1230,15 @@ function drawPlayerSword(bx,by,bw,bh,face,atk,ty){
     x.strokeStyle=PAL.steel[1]; x.lineWidth=3;   x.beginPath(); x.moveTo(gx,gy); x.lineTo(tipx,tipy); x.stroke();
     x.strokeStyle=PAL.steel[3]; x.lineWidth=1;   x.beginPath(); x.moveTo(gx,gy); x.lineTo(tipx,tipy); x.stroke();
     x.restore();
-    glowDot(tipx,tipy,1.1,'#dfeeff',8);           // tip glint
-    x.save(); x.translate(gx,gy); x.rotate(ang);  // gold crossguard
-    x.fillStyle=PAL.gold[2]; x.fillRect(-1.5,-3.5,3,7);
-    x.fillStyle=PAL.gold[3]; x.fillRect(-1.5,-3.5,1.2,7);
-    x.restore();
+    glowDot(tipx,tipy,1.1,'#dfeeff',8);
   } else {
-    const hx=face>0?bx+bw-1:bx+1, hy=ty+bh*0.4;   // sheathed hilt at hip
-    x.save(); x.translate(hx,hy); x.scale(face,1);
-    x.fillStyle=PAL.gold[1]; x.fillRect(-1,0,2,5);
-    x.fillStyle=PAL.steel[1]; x.fillRect(-2.5,5,5,1.5);
+    // sheathed on the back — hilt rises over the trailing shoulder (VHD back-sword)
+    const sx=cx+tail*bw*0.34, sy=ty+bh*0.14;
+    x.save(); x.translate(sx,sy); x.rotate(tail*0.5);
+    x.strokeStyle=PAL.steel[1]; x.lineWidth=2; x.lineCap='round';                // grip rising above shoulder
+    x.beginPath(); x.moveTo(0,0); x.lineTo(0,-bh*0.18); x.stroke();
+    x.fillStyle=PAL.gold[2]; x.fillRect(-1.6,-bh*0.2,3.2,1.8);                    // pommel
+    x.fillStyle=PAL.steel[2]; x.fillRect(-2.4,-bh*0.02,4.8,1.4);                  // guard
     x.restore();
   }
 }
@@ -1475,8 +1497,8 @@ function drawVampireBat(e,fl){
 function mkStone(seed){
   const oc=document.createElement('canvas'); oc.width=20; oc.height=20;
   const c=oc.getContext('2d');
-  // Varied stone base hue — gothic grey-purple palette
-  const hue=248+(seed%3)*6, sat=14+seed%5, lit=10+seed*1.4;
+  // Warm SOTN sandstone block — beige/tan masonry with chiselled bevel + dark mortar
+  const hue=34+(seed%4)*3, sat=19+seed%6, lit=30+seed*1.7;
   c.fillStyle=`hsl(${hue},${sat}%,${lit}%)`;
   c.fillRect(0,0,20,20);
   // LCG per-pixel noise for rock surface grain
@@ -1490,20 +1512,21 @@ function mkStone(seed){
     d[i*4+2]=Math.max(0,Math.min(255,d[i*4+2]+Math.floor(vary*0.7)));
   }
   c.putImageData(id,0,0);
-  // Rock-face cell shading — simulate Voronoi weathering with sine bands
+  // Warm tan striations (sedimentary weathering)
   c.globalAlpha=0.08+seed*0.01;
-  c.fillStyle=`rgba(${180+seed*5},${160+seed*3},${200+seed*2},1)`;
+  c.fillStyle=`rgba(${150+seed*4},${126+seed*3},${92+seed*2},1)`;
   for(let yy=0;yy<20;yy+=6+seed%3){
     c.fillRect(0,yy,20,1);
   }
   c.globalAlpha=1;
-  // Mortar groove — 1px recessed border
-  c.fillStyle='rgba(0,0,0,0.55)'; c.fillRect(0,19,20,1); c.fillRect(19,0,1,20);
-  c.fillStyle='rgba(0,0,0,0.30)'; c.fillRect(0,0,1,20);  c.fillRect(0,0,20,1);
-  // Top ledge highlight (HDRP key light simulation)
-  c.fillStyle='rgba(220,210,255,0.09)'; c.fillRect(0,0,20,2);
+  // Chiselled bevel — warm key light upper-left, cast shadow lower-right
+  c.fillStyle='rgba(255,238,196,0.16)'; c.fillRect(0,0,20,2); c.fillRect(0,0,2,20);
+  c.fillStyle='rgba(20,10,2,0.40)';     c.fillRect(0,18,20,2); c.fillRect(18,0,2,20);
+  // Mortar groove — recessed dark border
+  c.fillStyle='rgba(8,4,0,0.6)';  c.fillRect(0,19,20,1); c.fillRect(19,0,1,20);
+  c.fillStyle='rgba(8,4,0,0.38)'; c.fillRect(0,0,1,20);  c.fillRect(0,0,20,1);
   // Seeded crack patterns — 3 variants
-  c.strokeStyle='rgba(0,0,0,0.40)'; c.lineWidth=0.5;
+  c.strokeStyle='rgba(30,16,4,0.45)'; c.lineWidth=0.5;
   if(seed%4===0){
     c.beginPath(); c.moveTo(4,1); c.lineTo(8,9); c.lineTo(5,18); c.stroke();
   } else if(seed%4===1){
@@ -1512,16 +1535,16 @@ function mkStone(seed){
     c.beginPath(); c.moveTo(2,6); c.lineTo(12,10); c.stroke();
     c.beginPath(); c.moveTo(12,10); c.lineTo(16,16); c.stroke();
   }
-  // Moss/damp stain on random tiles
+  // Damp water-stain / age grime on random tiles (warm-neutral, not green)
   if(seed%5===0){
-    c.globalAlpha=0.12;
-    const mg=c.createLinearGradient(0,10,0,20);
-    mg.addColorStop(0,'transparent'); mg.addColorStop(1,'rgba(40,80,20,1)');
-    c.fillStyle=mg; c.fillRect(0,10,20,10);
+    c.globalAlpha=0.14;
+    const mg=c.createLinearGradient(0,9,0,20);
+    mg.addColorStop(0,'transparent'); mg.addColorStop(1,'rgba(30,40,28,1)');
+    c.fillStyle=mg; c.fillRect(0,9,20,11);
     c.globalAlpha=1;
   }
   // Subtle border
-  c.strokeStyle='rgba(0,0,0,0.8)'; c.lineWidth=0.5; c.strokeRect(0.25,0.25,19.5,19.5);
+  c.strokeStyle='rgba(10,5,0,0.7)'; c.lineWidth=0.5; c.strokeRect(0.25,0.25,19.5,19.5);
   return oc;
 }
 const STONE_VARS=Array.from({length:8},(_,i)=>mkStone(i));
