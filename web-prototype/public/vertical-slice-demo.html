@@ -2425,8 +2425,8 @@ function draw(){
   const st=statue, sg=st.glow;
   // Outer glow
   const sGlow=x.createRadialGradient(st.x+10,st.y+14,4,st.x+10,st.y+14,st.r);
-  const gc=st.used?`rgba(255,210,80,${0.22+0.1*sg})`:`rgba(60,130,255,${0.18+0.12*sg})`;
-  sGlow.addColorStop(0,gc); sGlow.addColorStop(1,'transparent');
+  const sgc=st.used?`rgba(255,210,80,${0.22+0.1*sg})`:`rgba(60,130,255,${0.18+0.12*sg})`;
+  sGlow.addColorStop(0,sgc); sGlow.addColorStop(1,'transparent');
   x.fillStyle=sGlow; x.fillRect(st.x-40,st.y-40,100,100);
   // Base
   x.fillStyle='#1a1e40'; x.fillRect(st.x-2,st.y+20,24,10);
