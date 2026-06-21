@@ -74,6 +74,20 @@ canvas{display:block;background:#08060f;}
 .help{font-size:11px;letter-spacing:1px;color:var(--g4);max-width:880px;text-align:center;line-height:1.7;}
 .help b{color:var(--g2);font-weight:400;}
 .tag{display:inline-block;border:1px solid var(--g4);padding:1px 7px;margin:0 2px;color:var(--g2);font-family:monospace;font-size:10px;}
+
+/* ── SOTN-style minimap panel (top-right) ── */
+.mm-panel{
+  position:absolute;top:12px;right:14px;z-index:10;
+  padding:8px 9px 7px;
+  background:linear-gradient(180deg,rgba(4,8,30,.97),rgba(2,4,16,.98));
+  border:1px solid #1a2860;border-radius:1px;
+  box-shadow:0 0 0 1px #06080a,0 0 0 2px #0c1230,0 0 20px rgba(0,0,0,.9),
+    inset 0 0 0 1px rgba(40,70,200,.15),inset 0 1px 0 rgba(70,110,220,.18);
+}
+.mm-panel::before{content:'';position:absolute;left:8px;right:8px;top:4px;height:1px;
+  background:linear-gradient(90deg,transparent,#3050c0 18%,#6080e0 50%,#3050c0 82%,transparent);opacity:.6;}
+.mm-title{font-size:7px;letter-spacing:2.5px;color:#2840a0;text-transform:uppercase;
+  text-align:center;margin-bottom:5px;margin-top:2px;}
 </style>
 </head>
 <body>
@@ -95,6 +109,12 @@ canvas{display:block;background:#08060f;}
   <div class="banner" id="banner">Entrance Hall — Threshold</div>
   <div class="toast"  id="toast"></div>
   <div id="fade" style="position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:20;transition:opacity 0.3s;"></div>
+
+  <!-- SOTN minimap -->
+  <div class="mm-panel">
+    <div class="mm-title">Explore Map</div>
+    <canvas id="mapCv" width="154" height="88"></canvas>
+  </div>
 </div>
 
 <div class="help">
@@ -173,6 +193,7 @@ const toast=(t)=>{const el=document.getElementById('toast');el.textContent=t;el.
 // ── Room state ────────────────────────────────────────────────────────────────
 let currentRoom=1;
 let doorUnlocked=false;
+const exploredRooms=new Set([1]);
 let transitioning=false;
 let spawnCur={x:spawn.x,y:spawn.y};
 let ladderX0Cur=ladderX0, ladderX1Cur=ladderX1;
@@ -290,6 +311,7 @@ function gainExp(n){
 
 function reset(){
   currentRoom=1;doorUnlocked=false;transitioning=false;
+  exploredRooms.clear();exploredRooms.add(1);
   // Rebuild room 1 grid
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)grid[r][c]=0;
   for(let c=0;c<COLS;c++)set(0,c,1);
@@ -367,6 +389,7 @@ function startTransition(){
   fade.style.opacity='1';
   setTimeout(()=>{
     currentRoom=2;
+    exploredRooms.add(2);
     buildRoom2Grid();
     set(3,14,1);set(3,15,1);set(3,16,1);set(3,17,1);
     resetRoom2Enemies();
@@ -440,6 +463,7 @@ function startTransition3(){
   fade.style.opacity='1';
   setTimeout(()=>{
     currentRoom=3;
+    exploredRooms.add(3);
     buildRoom3Grid();
     resetRoom3Enemies();
     spawnCur={x:3*S+4,y:FLOOR_ROW*S-30};
@@ -2958,6 +2982,86 @@ function draw(){
   x.setTransform(1,0,0,1,0,0);
 }
 
+// ── SOTN Minimap ─────────────────────────────────────────────────────────────
+// Map grid: 1 unit = 7px. Rooms positioned as a Metroidvania corridor chain.
+// Layout: [Room1]──[Room2]
+//                       │
+//                   [Room3]  (above R2)
+const _mapCv=document.getElementById('mapCv');
+const mc=_mapCv.getContext('2d');
+const MU=7; // map pixels per unit
+// Room rects in map units {x,y,w,h} — origin top-left of mapCv (4px margin)
+const MAP_R={
+  1:{x:0,  y:4, w:6, h:3, name:'Entrance Hall', zone:1},
+  2:{x:7,  y:4, w:6, h:3, name:'Catacombs',     zone:2},
+  3:{x:7,  y:0, w:6, h:4, name:'Clocktower',    zone:3}
+};
+// Door connectors: [{r1,r2,dx1,dy1,dx2,dy2}] in map units from origin
+const MAP_DOORS=[
+  {a:1,b:2, x1:6,y1:5.5, x2:7,y2:5.5},   // R1 right → R2 left (horizontal)
+  {a:2,b:3, x1:10,y1:4,  x2:10,y2:4}     // R2 top → R3 bottom
+];
+const ZONE_MM_COL={1:'#1e3aaa',2:'#8a2020',3:'#1a3c5a'};
+function drawMinimap(){
+  const MW=_mapCv.width, MH=_mapCv.height;
+  mc.clearRect(0,0,MW,MH);
+  // Background
+  mc.fillStyle='#020510'; mc.fillRect(0,0,MW,MH);
+  const MAR=4; // margin
+  // Draw each room
+  for(const [id,r] of Object.entries(MAP_R)){
+    const rid=parseInt(id);
+    const exp=exploredRooms.has(rid);
+    const cur=currentRoom===rid;
+    const rx=r.x*MU+MAR, ry=r.y*MU+MAR, rw=r.w*MU, rh=r.h*MU;
+    if(!exp){
+      mc.fillStyle='rgba(10,14,40,0.5)'; mc.fillRect(rx,ry,rw,rh);
+      continue;
+    }
+    // Zone-tinted fill
+    const bc=ZONE_MM_COL[r.zone]||'#1e3aaa';
+    mc.fillStyle=cur ? bc+'cc' : bc+'66';
+    mc.fillRect(rx,ry,rw,rh);
+    // Bevel highlight (top+left edges lit)
+    mc.fillStyle='rgba(140,170,255,0.18)'; mc.fillRect(rx,ry,rw,1); mc.fillRect(rx,ry,1,rh);
+    // Bevel shadow (bottom+right)
+    mc.fillStyle='rgba(0,0,10,0.7)'; mc.fillRect(rx,ry+rh-1,rw,1); mc.fillRect(rx+rw-1,ry,1,rh);
+    // Current room: bright border + inner glow
+    if(cur){
+      mc.strokeStyle='rgba(160,200,255,0.7)'; mc.lineWidth=1;
+      mc.strokeRect(rx+0.5,ry+0.5,rw-1,rh-1);
+      mc.fillStyle='rgba(100,140,255,0.08)'; mc.fillRect(rx+1,ry+1,rw-2,rh-2);
+    }
+  }
+  // Draw door connectors between explored rooms
+  for(const d of MAP_DOORS){
+    if(!exploredRooms.has(d.a)||!exploredRooms.has(d.b)) continue;
+    mc.strokeStyle='rgba(80,120,220,0.5)'; mc.lineWidth=1.5;
+    mc.beginPath();
+    mc.moveTo(d.x1*MU+MAR, d.y1*MU+MAR);
+    mc.lineTo(d.x2*MU+MAR, d.y2*MU+MAR);
+    mc.stroke();
+  }
+  // Player dot — blinking gold, positioned in current room center
+  const cr=MAP_R[currentRoom];
+  if(cr && exploredRooms.has(currentRoom)){
+    const px=cr.x*MU+MAR + cr.w*MU*0.5;
+    const py=cr.y*MU+MAR + cr.h*MU*0.5;
+    const pulse=0.55+0.45*Math.sin(Date.now()/380);
+    mc.save();
+    mc.shadowColor='#ffe870'; mc.shadowBlur=5;
+    mc.fillStyle=`rgba(255,225,80,${pulse})`;
+    mc.beginPath(); mc.arc(px,py,2.2,0,7); mc.fill();
+    mc.restore();
+  }
+  // Zone name label at very bottom
+  mc.fillStyle='rgba(50,80,160,0.65)'; mc.font='6px "Palatino Linotype",Georgia,serif';
+  mc.textAlign='center';
+  const zoneName=(MAP_R[currentRoom]||MAP_R[1]).name.toUpperCase();
+  mc.fillText(zoneName, MW/2, MH-2);
+  mc.textAlign='left';
+}
+
 // ── HUD sync ─────────────────────────────────────────────────────────────────
 function hud(){
   const hpP=Math.max(0,P.hp)/P.mhp*100, mpP=Math.max(0,P.mp)/P.mmp*100;
@@ -2968,6 +3072,7 @@ function hud(){
   document.getElementById('lvV').textContent=P.lv;
   document.getElementById('expF').style.width=(P.exp/P.enext*100)+'%';
   document.getElementById('vig').classList.toggle('danger',hpP<25);
+  drawMinimap();
 }
 
 function loop(){
