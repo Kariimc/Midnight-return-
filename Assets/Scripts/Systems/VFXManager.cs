@@ -87,6 +87,70 @@ namespace MidnightReturn.Systems
             StartCoroutine(ReturnToPool(vfx, 1.5f));
         }
 
+        // ── Impact-juice spawns (FEAT-02 hooks; directional, Dread-style) ─────
+        // Directional spark burst flung in the attack direction with enemy tint.
+        public void SpawnHitSpark(Vector3 position, int facingDir, Color enemyTint, bool isCrit = false)
+        {
+            var vfx = GetPooledVFX(_hitSparkVFX, position);
+            if (vfx == null) return;
+            vfx.SetVector4("Color", isCrit ? new Vector4(1f, 0.9f, 0f, 1f)
+                                           : new Vector4(enemyTint.r, enemyTint.g, enemyTint.b, 1f));
+            vfx.SetFloat("Direction", facingDir);
+            vfx.SetFloat("Scale",     isCrit ? 1.8f : 1.1f);
+            vfx.SetInt("ParticleCount", isCrit ? 18 : 6);
+            vfx.SendEvent("OnPlay");
+            StartCoroutine(ReturnToPool(vfx, 1.2f));
+        }
+
+        // Crit burst — 12 radial particles plus a 1-frame edge bloom pop.
+        public void SpawnCritBurst(Vector3 position)
+        {
+            var vfx = GetPooledVFX(_hitSparkVFX, position);
+            if (vfx != null)
+            {
+                vfx.SetVector4("Color", new Vector4(1f, 0.9f, 0f, 1f));
+                vfx.SetFloat("Scale", 2.0f);
+                vfx.SetInt("ParticleCount", 12);
+                vfx.SendEvent("OnPlay");
+                StartCoroutine(ReturnToPool(vfx, 1.2f));
+            }
+            StartCoroutine(BloomSpike(2.0f, 0.18f));
+        }
+
+        // Rising "soul" particles on enemy death (slow ascent + fade).
+        public void SpawnDeathSoul(Vector3 position, Color color)
+        {
+            var vfx = GetPooledVFX(_deathBurstVFX, position);
+            if (vfx == null) return;
+            vfx.SetVector4("Color", new Vector4(color.r, color.g, color.b, 1f));
+            vfx.SetInt("ParticleCount", 8);
+            vfx.SetFloat("Rise", 1f);
+            vfx.SendEvent("OnPlay");
+            StartCoroutine(ReturnToPool(vfx, 2.5f));
+        }
+
+        // Two micro-particles kicked from the player's feet while running.
+        public void SpawnFootstepDust(Vector3 position, int facingDir)
+        {
+            var vfx = GetPooledVFX(_runDustVFX, position);
+            if (vfx == null) return;
+            vfx.SetFloat("Direction", -facingDir);
+            vfx.SetInt("ParticleCount", 2);
+            vfx.SendEvent("OnPlay");
+            StartCoroutine(ReturnToPool(vfx, 0.4f));
+        }
+
+        // 3-particle splatter + fading stain on heavy hits.
+        public void SpawnBloodDrip(Vector3 position, int facingDir)
+        {
+            var vfx = GetPooledVFX(_bloodVFX, position);
+            if (vfx == null) return;
+            vfx.SetFloat("Direction", facingDir);
+            vfx.SetInt("ParticleCount", 3);
+            vfx.SendEvent("OnPlay");
+            StartCoroutine(ReturnToPool(vfx, 2f));
+        }
+
         public void PlayDeathBurst(VisualEffectAsset asset, Vector3 position, Color color)
         {
             var vfx = GetPooledVFX(asset ?? _deathBurstVFX, position);

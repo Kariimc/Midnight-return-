@@ -123,7 +123,8 @@ const ladderX0=LADDER_COL*S, ladderX1=(LADDER_COL+1)*S,
 const spawn={x:3*S+4,y:FLOOR_ROW*S-30};
 const P={x:spawn.x,y:spawn.y,w:14,h:30,vx:0,vy:0,face:1,grounded:false,
          climbing:false,hp:120,mhp:120,mp:60,mmp:60,lv:1,exp:0,enext:100,
-         iframes:0,atk:0,coyote:0,jumpHeld:false,jumpT:0,wraith:0};
+         iframes:0,atk:0,coyote:0,jumpHeld:false,jumpT:0,wraith:0,
+         squish:0,wasGrounded:false,afterimg:[]};
 
 function mkEnemy(o){return Object.assign({w:18,h:30,vx:0,face:-1,cd:0,hitFlash:0,dead:0,
   dissolve:0},o);}
@@ -217,6 +218,34 @@ let phaseWalls = [];
 let fanfare = null; // {phase, t, name, desc, barH, waitInput, done}
 let Time_frozen = false;
 
+// ════════════════════════════════════════════════════════════════════════════
+//  FEAT-01 — ZONE CINEMA SYSTEM (web mirror of ZoneAtmosphereProfile.cs)
+//  Each room gets its own light colour, fog, far-silhouette shape, drift,
+//  living elements, ambient mote colour, and a multiply colour grade. Swapping
+//  the active key re-stages the whole scene — no per-room draw branches.
+// ════════════════════════════════════════════════════════════════════════════
+const ZONE_ATMOS={
+  1:{ name:'Entrance Hall',
+      sky:['#070418','#0c0820'], silhouette:'spires', drift:0.018,
+      fog:'rgba(28,16,52,0.20)', fogTop:0.42, mote:'#b8a0e0', motes:4,
+      grade:'rgba(40,20,60,0.07)', drip:0, steam:0, lightPool:'rgba(255,165,40,0.55)' },
+  2:{ name:'Catacombs',
+      sky:['#0a0402','#150806'], silhouette:'stalactites', drift:0.008,
+      fog:'rgba(54,24,14,0.24)', fogTop:0.50, mote:'#c8a070', motes:5,
+      grade:'rgba(60,25,10,0.085)', drip:0.5, steam:0, lightPool:'rgba(255,140,30,0.5)' },
+  3:{ name:'Clocktower',
+      sky:['#040810','#06101a'], silhouette:'gears', drift:0.022,
+      fog:'rgba(14,28,40,0.18)', fogTop:0.40, mote:'#88c0d8', motes:4,
+      grade:'rgba(10,30,45,0.075)', drip:0, steam:96, lightPool:'rgba(120,200,230,0.42)' }
+};
+const atmos=()=>ZONE_ATMOS[currentRoom]||ZONE_ATMOS[1];
+
+// Impact-juice state
+let caFlash=0;          // chromatic-aberration timer (frames) — fires on damage
+let ceilingDrips=[];    // {x,y,vy,life} ceiling water (Catacombs)
+let steamPuffs=[];      // {x,y,vy,life,r} wall steam (Clocktower)
+let steamT=0;
+
 // ── Physics helpers ──────────────────────────────────────────────────────────
 function moveAxis(ent,dx,dy){
   // X
@@ -234,6 +263,8 @@ function moveAxis(ent,dx,dy){
 function hurtPlayer(dmg){
   if(P.iframes>0)return;
   P.hp=Math.max(0,P.hp-dmg); P.iframes=60; shake=6;
+  caFlash=8; // contextual chromatic-aberration spike (Dread-style, damage-only)
+  spark(P.x+P.w/2,P.y+P.h/2,'#ff3344',8,(P.x+P.w/2)<W/2?1:-1,1.2);
   if(P.hp<=0){toast('You Died');setTimeout(reset,700);}
 }
 
@@ -270,6 +301,7 @@ set(10,20,1);set(10,21,1);set(10,22,1);set(10,23,1);set(10,24,1);
   hourglassUnlocked=false; hourglassCd=0; hrHead=0; hrCount=0; hrRewinding=false; hrRewindT=0;
   boss3=null; boss3Triggered=false;
   tether=null; P.wraith=0; pendulum=null;
+  caFlash=0; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
   gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
   fanfare=null; Time_frozen=false;
   initRoom1Gates();
@@ -333,6 +365,7 @@ function startTransition(){
     P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;P.climbing=false;
     shots=[];particles=[];
     bossTriggered=false; boss=null;
+    caFlash=0; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
     gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; fanfare=null; Time_frozen=false;
     initRoom2Gates();
     const ban=document.getElementById('banner');
@@ -405,6 +438,7 @@ function startTransition3(){
     shots=[];particles=[];
     bossTriggered=false; boss=null;
     boss3=null; boss3Triggered=false; hrHead=0; hrCount=0; hrRewinding=false; hrRewindT=0;
+    caFlash=0; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
     gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
     fanfare=null; Time_frozen=false;
     // Pendulum hazard over the central shaft
@@ -957,9 +991,28 @@ function addParticles(px,py,color,n=12){
   }
 }
 
+// Directional impact spark — flings particles in a facing cone (hit sparks).
+function spark(px,py,color,n,dirX,spread=0.7){
+  const base=Math.atan2(-0.3,dirX); // slight upward bias
+  for(let i=0;i<n;i++){
+    const angle=base+(Math.random()-0.5)*spread*2;
+    const spd=2.5+Math.random()*4;
+    particles.push({x:px,y:py,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,
+      life:24,maxLife:24,color:color,size:1.5+Math.random()*2.5,grav:0.18});
+  }
+}
+// Rising soul motes on enemy death — slow ascent, long fade, no gravity.
+function souls(px,py,color,n=8){
+  for(let i=0;i<n;i++){
+    particles.push({x:px+(Math.random()-0.5)*16,y:py+(Math.random()-0.5)*16,
+      vx:(Math.random()-0.5)*0.6,vy:-0.6-Math.random()*0.8,
+      life:90,maxLife:90,color:color,size:2+Math.random()*2,grav:-0.005,glow:1});
+  }
+}
+
 function updateParticles(){
   for(const p of particles){
-    p.vy+=0.12;
+    p.vy+=(p.grav!==undefined?p.grav:0.12);
     p.x+=p.vx;
     p.y+=p.vy;
     p.life--;
@@ -1299,6 +1352,9 @@ function update(){
     // Ground/coyote jump
     if(jp&&!P.jumpHeld&&(P.grounded||P.coyote>0)){
       P.vy=-6.6;P.jumpHeld=true;P.jumpT=12;P.coyote=0;P_djUsed=false;
+      // Takeoff dust kick
+      for(let i=0;i<4;i++)particles.push({x:P.x+P.w/2+(Math.random()-0.5)*P.w,y:P.y+P.h,
+        vx:(Math.random()-0.5)*1.5,vy:0.4+Math.random()*0.6,life:20,maxLife:20,color:'#6a5a78',size:1.5+Math.random()*1.5,grav:0.05});
     }
     // Double jump
     else if(jp&&!P.jumpHeld&&!P.grounded&&doubleJumpUnlocked&&!P_djUsed&&P.coyote<=0){
@@ -1311,11 +1367,29 @@ function update(){
     if(P.grounded)P_djUsed=false;
     P.vy=Math.min(P.vy+0.45,9); // gravity / terminal
     moveAxis(P,P.vx,0); moveAxis(P,0,P.vy);
-    // Air dash [X]
+    // Landing impact — squish + dust burst (detect grounded edge)
+    if(P.grounded && !P.wasGrounded && P.vy>=0){
+      P.squish=6;
+      for(let i=0;i<5;i++)particles.push({x:P.x+P.w/2+(Math.random()-0.5)*P.w*1.4,y:P.y+P.h,
+        vx:(Math.random()-0.5)*2.2,vy:-Math.random()*0.5,life:22,maxLife:22,color:'#7a6a88',size:1.5+Math.random()*2,grav:0.12});
+    }
+    P.wasGrounded=P.grounded;
+    if(P.squish>0)P.squish--;
+    // Footstep micro-dust while running on the ground
+    if(P.grounded && Math.abs(P.vx)>1.2 && Math.random()<0.3)
+      particles.push({x:P.x+(P.face>0?0:P.w),y:P.y+P.h-1,vx:-P.face*0.6,vy:-0.3,life:16,maxLife:16,color:'#5a4a68',size:1.2,grav:0.08});
+    // Air dash [X] — captures afterimages
     if(airDashUnlocked && K['x'] && !P.grounded && airDashes>0 && airDashCd<=0){
       P.vx=P.face*9; P.vy=-1; airDashes=0; airDashCd=30;
       addParticles(P.x+P.w/2,P.y+P.h/2,'#8844ff',14);
     }
+    // Dash afterimage capture (while moving fast horizontally)
+    if(Math.abs(P.vx)>5){
+      P.afterimg.unshift({x:P.x,y:P.y,face:P.face,life:10});
+      if(P.afterimg.length>4)P.afterimg.pop();
+    }
+    for(const a of P.afterimg)a.life--;
+    P.afterimg=P.afterimg.filter(a=>a.life>0);
     // Restore air dash on landing
     if(P.grounded && airDashUnlocked && airDashes===0) airDashes=1;
 
@@ -1372,9 +1446,13 @@ function update(){
       if(hb.x<e.x+e.w&&hb.x+hb.w>e.x&&hb.y<e.y+e.h&&hb.y+hb.h>e.y){
         if(e.hitFlash<=0){
           let dmg=Math.max(1,8+P.lv*3-e.def)+Math.floor(Math.random()*5);
-          e.hp-=dmg; e.hitFlash=8; hitstop=2; shake=4;
-          addParticles(e.x+e.w/2,e.y+e.h/2,'#ffeeaa',8);
-          if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,28);checkRoomClear();}
+          const crit=Math.random()<0.18;
+          if(crit)dmg=Math.floor(dmg*1.6);
+          e.hp-=dmg; e.hitFlash=8; hitstop=crit?4:2; shake=crit?7:4;
+          // Directional impact spark flung in facing direction, enemy-tinted.
+          spark(e.x+e.w/2,e.y+e.h/2,crit?'#ffe066':'#ffeeaa',crit?12:6,P.face,crit?1.0:0.6);
+          if(crit)addParticles(e.x+e.w/2,e.y+e.h/2,'#fff2a0',8);
+          if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);souls(e.x+e.w/2,e.y+e.h/2,e.col,8);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,20);checkRoomClear();}
         }
       }
     }
@@ -1387,8 +1465,8 @@ function update(){
   shots.forEach(s=>{s.x+=s.vx;s.life--;});
   for(const s of shots){for(const e of enemies){if(e.dead)continue;
     if(s.x>e.x&&s.x<e.x+e.w&&s.y>e.y&&s.y<e.y+e.h){e.hp-=14;e.hitFlash=8;s.life=0;
-      addParticles(e.x+e.w/2,e.y+e.h/2,'#aaddff',8);
-      if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,28);checkRoomClear();}}}}
+      spark(e.x+e.w/2,e.y+e.h/2,'#aaddff',6,s.vx>0?1:-1,0.8);
+      if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);souls(e.x+e.w/2,e.y+e.h/2,e.col,8);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,20);checkRoomClear();}}}}
   shots=shots.filter(s=>s.life>0&&s.x>0&&s.x<W);
 
   // enemies
@@ -1567,10 +1645,75 @@ function update(){
   if(P.iframes>0)P.iframes--;
   if(P.mp<P.mmp)P.mp=Math.min(P.mmp,P.mp+0.04);
   if(shake>0)shake-=0.6;
+  if(caFlash>0)caFlash--;
 
   // particles and dust
   updateParticles();
   spawnDust();
+  updateAtmosElements();
+}
+
+// ── FEAT-01 living background elements (drips / steam) ─────────────────────────
+function updateAtmosElements(){
+  const a=atmos();
+  // Ceiling drips (Catacombs) — spawn from random ceiling columns, fall, splash.
+  if(a.drip>0){
+    if(Math.random()<a.drip*0.04){
+      const c=2+Math.floor(Math.random()*(COLS-4));
+      // find lowest ceiling tile in that column from the top
+      let cy=S;
+      for(let r=0;r<6;r++){ if(grid[r] && grid[r][c]===1) cy=(r+1)*S; }
+      ceilingDrips.push({x:c*S+S/2,y:cy,vy:0.4,life:200});
+    }
+  }
+  for(const d of ceilingDrips){
+    d.vy=Math.min(d.vy+0.18,7); d.y+=d.vy; d.life--;
+    // splash when hitting a solid tile or floor band
+    const rr=Math.floor((d.y)/S), cc=Math.floor(d.x/S);
+    if((grid[rr]&&grid[rr][cc]===1)||d.y>H){
+      for(let i=0;i<4;i++)particles.push({x:d.x,y:d.y,vx:(Math.random()-0.5)*1.6,vy:-Math.random()*1.5,
+        life:14,maxLife:14,color:'#5a7a8a',size:1.2,grav:0.2});
+      d.life=0;
+    }
+  }
+  ceilingDrips=ceilingDrips.filter(d=>d.life>0).slice(0,8);
+  // Steam vents (Clocktower) — rising puffs from wall seams.
+  if(a.steam>0){
+    steamT++;
+    if(steamT%a.steam===0){
+      const c=3+Math.floor(Math.random()*(COLS-6));
+      steamPuffs.push({x:c*S+S/2,y:(FLOOR_ROW-1)*S,vy:-0.5,life:90,r:3});
+    }
+  }
+  for(const sp of steamPuffs){ sp.y+=sp.vy; sp.r+=0.12; sp.life--; }
+  steamPuffs=steamPuffs.filter(sp=>sp.life>0).slice(0,6);
+}
+
+// Zone-specific far silhouette band (castle spires / cave stalactites / gear towers).
+function drawSilhouette(type,drift){
+  const base=H*0.62;
+  x.beginPath();
+  x.moveTo(0,H);
+  if(type==='spires'){
+    for(let i=-1;i<8;i++){
+      const bx=i*S*6+drift*0.2;
+      x.lineTo(bx,base); x.lineTo(bx+S*1.5,base-S*2.2); x.lineTo(bx+S*3,base);
+    }
+  } else if(type==='stalactites'){
+    x.lineTo(0,0); x.lineTo(W,0);
+    for(let i=8;i>=-1;i--){
+      const bx=i*S*5+drift*0.15;
+      x.lineTo(bx,S*0.5); x.lineTo(bx-S*1.2,S*3.5); x.lineTo(bx-S*2.4,S*0.5);
+    }
+    x.lineTo(0,0); x.fill(); return;
+  } else { // gears — overlapping circles silhouette
+    x.lineTo(W,H); x.lineTo(W,base); x.lineTo(0,base); x.closePath(); x.fill();
+    for(const[gx,gy,gr] of [[6,7,2.6],[20,5,3.2],[34,8,2.8],[42,6,2.2]]){
+      x.beginPath(); x.arc(gx*S+drift*0.1,gy*S,gr*S,0,7); x.fill();
+    }
+    return;
+  }
+  x.lineTo(W,base); x.lineTo(W,H); x.closePath(); x.fill();
 }
 
 // ── Draw ─────────────────────────────────────────────────────────────────────
@@ -1579,30 +1722,51 @@ function draw(){
   const sx=(Math.random()-.5)*shake, sy=(Math.random()-.5)*shake;
   x.setTransform(1,0,0,1,sx,sy);
 
-  // ── LAYER 0: Far background ──────────────────────────────────────────────
+  const A=atmos();
+  // ── LAYER 0: Far background (zone-keyed sky gradient) ────────────────────
   const bgGrad=x.createLinearGradient(0,0,0,H);
-  bgGrad.addColorStop(0,'#060411'); bgGrad.addColorStop(1,'#0a0816');
+  bgGrad.addColorStop(0,A.sky[0]); bgGrad.addColorStop(1,A.sky[1]);
   x.fillStyle=bgGrad; x.fillRect(0,0,W,H);
 
   // Brick fill (background pattern)
   x.fillStyle=brickPat;
   x.globalAlpha=0.7; x.fillRect(0,0,W,H); x.globalAlpha=1;
 
-  // ── LAYER 1: Atmospheric parallax (faint Gothic columns) ────────────────
+  // ── LAYER 0b: Far silhouette band (zone-specific, slow drift) ───────────
+  x.save();
+  x.globalAlpha=0.13;
+  x.fillStyle='#1a1630';
+  const sDrift=(Date.now()*A.drift)%(W+200)-100;
+  drawSilhouette(A.silhouette,sDrift);
+  x.restore();
+
+  // ── LAYER 1: Atmospheric parallax (faint Gothic columns, mid depth) ─────
   x.save();
   x.globalAlpha=0.18;
   x.fillStyle='#1a1428';
-  // Columns at 6 positions
+  const colDrift=(Date.now()*A.drift*1.6)%(10*S);
   for(const cx of [1.5,8,18,26,36,42]){
-    const colX=cx*S, cw=S*0.9;
+    const colX=cx*S-colDrift*0.3, cw=S*0.9;
     x.fillRect(colX,0,cw,H*0.7);
-    // Column capital
     x.fillRect(colX-2,0,cw+4,S*0.6);
-    // Arch hint
     x.beginPath();
     x.moveTo(colX,H*0.7);x.quadraticCurveTo(colX+cw/2,H*0.5,colX+cw,H*0.7);
     x.fill();
   }
+  x.restore();
+
+  // ── LAYER 1b: Rising atmosphere mist (zone fog wash) ────────────────────
+  x.save();
+  const mistY=H*(1-A.fogTop);
+  const fg=x.createLinearGradient(0,mistY,0,H);
+  fg.addColorStop(0,'transparent');
+  fg.addColorStop(1,A.fog);
+  x.fillStyle=fg;
+  // two overlapping animated puffs for living haze
+  const puff=0.85+Math.sin(Date.now()/1400)*0.15;
+  x.globalAlpha=puff; x.fillRect(0,mistY,W,H-mistY);
+  x.globalAlpha=0.5*(0.85+Math.cos(Date.now()/1900)*0.15);
+  x.fillRect(0,mistY+8,W,H-mistY);
   x.restore();
 
   // ── LAYER 2: Ladder (iron-look) ─────────────────────────────────────────
@@ -2014,17 +2178,48 @@ function draw(){
     x.shadowBlur=0; x.restore();
   }
 
+  // ── LAYER 7e: Ceiling drips + steam (living atmosphere) ─────────────────
+  for(const d of ceilingDrips){
+    x.save();
+    x.strokeStyle='rgba(120,170,190,0.7)'; x.lineWidth=1.5;
+    x.beginPath(); x.moveTo(d.x,d.y-5); x.lineTo(d.x,d.y); x.stroke();
+    x.shadowColor='rgba(120,170,190,0.6)'; x.shadowBlur=4;
+    x.fillStyle='rgba(170,210,225,0.9)'; x.beginPath(); x.arc(d.x,d.y,1.6,0,7); x.fill();
+    x.restore();
+  }
+  for(const sp of steamPuffs){
+    x.save();
+    x.globalAlpha=Math.max(0,sp.life/90)*0.3;
+    const sg=x.createRadialGradient(sp.x,sp.y,0,sp.x,sp.y,sp.r);
+    sg.addColorStop(0,'rgba(180,210,225,0.6)'); sg.addColorStop(1,'transparent');
+    x.fillStyle=sg; x.beginPath(); x.arc(sp.x,sp.y,sp.r,0,7); x.fill();
+    x.restore();
+  }
+
+  // ── LAYER 7f: Dash afterimages (ghost trail) ────────────────────────────
+  for(const a of P.afterimg){
+    x.save();
+    x.globalAlpha=(a.life/10)*0.32;
+    x.shadowColor='#8855ff'; x.shadowBlur=8;
+    x.fillStyle='rgba(120,80,210,0.8)'; x.fillRect(a.x,a.y,P.w,P.h);
+    x.restore();
+  }
+
   // ── LAYER 8: Player ─────────────────────────────────────────────────────
   x.save();
   if(P.iframes>0&&Math.floor(P.iframes/4)%2)x.globalAlpha=.35;
   // Wraith Step ghost tint
   if(P.wraith>0){ x.globalAlpha=(x.globalAlpha||1)*0.55; }
+  // Landing squish — wider + shorter for a few frames
+  const sqK=P.squish/6;
+  const pw=P.w*(1+sqK*0.18), ph=P.h*(1-sqK*0.22);
+  const pX=P.x-(pw-P.w)/2, pY=P.y+(P.h-ph);
   // Shadow
-  x.fillStyle='rgba(0,0,0,0.3)'; x.fillRect(P.x+2,P.y+P.h,P.w-4,5);
+  x.fillStyle='rgba(0,0,0,0.3)'; x.fillRect(pX+2,P.y+P.h,pw-4,5);
   // Cloak (body)
-  const pg=x.createLinearGradient(P.x,P.y,P.x,P.y+P.h);
+  const pg=x.createLinearGradient(pX,pY,pX,pY+ph);
   pg.addColorStop(0,'#2a2040');pg.addColorStop(0.4,'#1c1630');pg.addColorStop(1,'#12101f');
-  x.fillStyle=pg; x.fillRect(P.x,P.y,P.w,P.h);
+  x.fillStyle=pg; x.fillRect(pX,pY,pw,ph);
   // Cloak edge highlight
   x.fillStyle='rgba(180,160,220,0.12)'; x.fillRect(P.face>0?P.x:P.x+P.w-2,P.y,2,P.h);
   // Collar/shoulder
@@ -2122,9 +2317,23 @@ function draw(){
   x.drawImage(lCv,0,0);
   x.globalCompositeOperation='source-over';
 
-  // ── LAYER 11: Color grade overlay ─────────────────────────────────────────
-  x.fillStyle='rgba(20,10,40,0.08)';
+  // ── LAYER 11: Zone color grade (FEAT-01 — per-zone multiply wash) ─────────
+  x.fillStyle=atmos().grade;
   x.fillRect(0,0,W,H);
+
+  // ── LAYER 11b: Damage chromatic aberration (contextual, Dread-style) ──────
+  if(caFlash>0){
+    const off=Math.ceil(caFlash*0.8);
+    x.save();
+    x.globalCompositeOperation='screen';
+    x.globalAlpha=0.5*(caFlash/8);
+    // Pull red left, blue right — fake RGB split on a vignette ring
+    x.fillStyle='rgba(255,0,40,0.5)'; x.fillRect(-off,0,off+2,H);
+    x.fillStyle='rgba(0,80,255,0.5)'; x.fillRect(W-2,0,off+2,H);
+    x.globalAlpha=0.18*(caFlash/8);
+    x.fillStyle='#ff0030'; x.fillRect(-off,0,W,H);
+    x.restore();
+  }
 
   // ── Hourglass rewind overlay ──────────────────────────────────────────────
   if(hrRewinding){

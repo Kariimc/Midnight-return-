@@ -59,6 +59,8 @@ namespace MidnightReturn.Player
                 Quaternion.identity, _enemyLayer);
 
             bool hitSomething = false;
+            bool critLanded   = false;
+            int  facing       = _player.Movement.FacingDir;
             for (int i = 0; i < count; i++)
             {
                 if (_hitResults[i].TryGetComponent<Enemies.EnemyBase>(out var enemy))
@@ -67,26 +69,41 @@ namespace MidnightReturn.Player
                     dmg += EquippedWeapon.Attack;
                     int dealt = enemy.TakeDamage(dmg, EquippedWeapon.DamageType, isCrit);
 
-                    // Hitstop + VFX per hit
-                    VFXManager.Instance?.SpawnHitSpark(
-                        _hitResults[i].bounds.center,
-                        isCrit,
-                        EquippedWeapon.TrailColor
-                    );
+                    // Directional impact spark flung in the attack direction, enemy-tinted.
+                    Vector3 hitPos = _hitResults[i].bounds.center;
+                    VFXManager.Instance?.SpawnHitSpark(hitPos, facing, EquippedWeapon.TrailColor, isCrit);
+                    if (isCrit)
+                    {
+                        VFXManager.Instance?.SpawnCritBurst(hitPos);
+                        critLanded = true;
+                    }
+                    if (dealt >= 20)
+                        VFXManager.Instance?.SpawnBloodDrip(hitPos, facing);
+
                     hitSomething = true;
                 }
             }
 
-            // Different shake/sound for hit vs whiff
+            // Hit/whiff differentiation. Hitstop is longer on crits (Dread-style weight).
             if (hitSomething)
             {
-                EventBus.Emit(new CameraShakeEvent { Intensity = 0.05f, Duration = 0.08f });
+                Time.timeScale = 0f;
+                StartCoroutine(ReleaseHitstop(critLanded ? 0.05f : 0.03f));
+                EventBus.Emit(new CameraShakeEvent { Intensity = critLanded ? 0.12f : 0.05f, Duration = 0.1f });
                 AudioManager.Instance?.Play(EquippedWeapon.HitSound);
             }
             else
             {
                 AudioManager.Instance?.Play(EquippedWeapon.SwingSound);
             }
+        }
+
+        // Real-time hitstop release — uses unscaled time so it survives timeScale=0.
+        private IEnumerator ReleaseHitstop(float seconds)
+        {
+            yield return new WaitForSecondsRealtime(seconds);
+            // Don't stomp a rewind/pause that legitimately froze time.
+            if (Time.timeScale == 0f) Time.timeScale = 1f;
         }
 
         public void EquipWeapon(WeaponDataSO weapon) => EquippedWeapon = weapon;
