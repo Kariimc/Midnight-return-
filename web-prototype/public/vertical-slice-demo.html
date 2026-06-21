@@ -1024,51 +1024,517 @@ function updateParticles(){
   particles=particles.filter(p=>p.life>0);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  SOTN-style sprite renderers — canvas-drawn character + enemy art.
+//  All coordinates relative to entity bounding box (bx,by,bw,bh).
+//  'flash' = bool (white hit-flash during hitFlash frames).
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Player: Alucard-style gothic vampire hunter ───────────────────────────
+function drawPlayerSprite(bx,by,bw,bh,face,atk){
+  const cx=bx+bw/2;
+  // Cape — billows on the trailing side, rendered before body
+  x.save();
+  const capeSide=face>0?-1:1;
+  const capeX=face>0?bx+1:bx+bw-1;
+  const capeAnchorX=face>0?bx-5:bx+bw+5;
+  const cg=x.createLinearGradient(capeX,by+4,capeAnchorX,by+bh*0.85);
+  cg.addColorStop(0,'rgba(38,18,70,0.0)');
+  cg.addColorStop(0.25,'rgba(55,22,100,0.88)');
+  cg.addColorStop(0.65,'rgba(35,12,65,0.75)');
+  cg.addColorStop(1,'rgba(15,5,30,0.30)');
+  x.fillStyle=cg;
+  x.beginPath();
+  x.moveTo(capeX,by+4);
+  x.quadraticCurveTo(capeAnchorX-capeSide*3,by+bh*0.35,capeAnchorX,by+bh*0.82);
+  x.lineTo(capeX+capeSide*2,by+bh*0.88);
+  x.quadraticCurveTo(capeX-capeSide*2,by+bh*0.5,capeX,by+4);
+  x.fill();
+  x.restore();
+  // Boots — dark leather
+  x.fillStyle='#1e100a';
+  x.fillRect(bx+1,   by+bh*0.73,bw*0.40,bh*0.27);
+  x.fillRect(bx+bw*0.53,by+bh*0.73,bw*0.40,bh*0.27);
+  x.fillStyle='rgba(70,38,14,0.5)';
+  x.fillRect(bx+1,   by+bh*0.73,bw*0.40,2);
+  x.fillRect(bx+bw*0.53,by+bh*0.73,bw*0.40,2);
+  // Boot toe rivets
+  x.fillStyle='rgba(100,60,20,0.6)';
+  x.fillRect(bx+1,by+bh-3,4,2); x.fillRect(bx+bw*0.53,by+bh-3,4,2);
+  // Lower body
+  const lgGrad=x.createLinearGradient(bx,by+bh*0.56,bx+bw,by+bh*0.73);
+  lgGrad.addColorStop(0,'#18103a'); lgGrad.addColorStop(1,'#0c0820');
+  x.fillStyle=lgGrad; x.fillRect(bx,by+bh*0.56,bw,bh*0.18);
+  // Cloak body — deep midnight blue-purple
+  const bodyGrad=x.createLinearGradient(bx,by+8,bx+bw,by+bh*0.58);
+  bodyGrad.addColorStop(0,'#2e1858'); bodyGrad.addColorStop(0.4,'#1e1040'); bodyGrad.addColorStop(1,'#140c30');
+  x.fillStyle=bodyGrad; x.fillRect(bx,by+8,bw,bh*0.49);
+  // Cloak inner shadow on trailing edge
+  x.fillStyle=`rgba(0,0,0,0.25)`; x.fillRect(face>0?bx:bx+bw-2,by+8,2,bh*0.49);
+  // Cloak inner highlight on leading edge
+  x.fillStyle='rgba(180,150,240,0.10)'; x.fillRect(face>0?bx+bw-2:bx,by+8,2,bh*0.38);
+  // Belt — dark leather with gold buckle
+  x.fillStyle='#1e1008'; x.fillRect(bx,by+bh*0.53,bw,4);
+  x.fillStyle='#b8901c'; x.fillRect(cx-3.5,by+bh*0.53,7,4);
+  x.fillStyle='#ffe060'; x.fillRect(cx-2.5,by+bh*0.53+1,5,2);
+  x.fillStyle='rgba(0,0,0,0.5)'; x.fillRect(cx-0.5,by+bh*0.53+0.5,1,3); // buckle pin
+  // High crimson collar
+  x.fillStyle='#6a0818'; x.fillRect(bx-2,by+4,bw+4,5);
+  x.fillStyle='rgba(180,30,50,0.45)'; x.fillRect(bx-2,by+4,bw+4,1.5); // specular
+  x.fillStyle='rgba(180,120,30,0.65)'; x.fillRect(bx-2,by+8.5,bw+4,0.8); // gold trim
+  // Raised collar wings (SOTN Alucard silhouette detail)
+  x.fillStyle='#5a0610';
+  x.beginPath(); x.moveTo(bx-2,by+4); x.lineTo(bx-5,by-1); x.lineTo(bx+2,by+4); x.fill();
+  x.beginPath(); x.moveTo(bx+bw+2,by+4); x.lineTo(bx+bw+5,by-1); x.lineTo(bx+bw-2,by+4); x.fill();
+  // Face (pale aristocratic)
+  x.fillStyle='#d8c8aa'; x.fillRect(bx+2,by+3,bw-4,6);
+  // Hair — silver-white, flowing
+  const hGrad=x.createLinearGradient(bx+1,by,bx+bw-1,by+6);
+  hGrad.addColorStop(0,'#c0c8d8'); hGrad.addColorStop(0.5,'#f0f0ff'); hGrad.addColorStop(1,'#a8b0c0');
+  x.fillStyle=hGrad; x.fillRect(bx+1,by,bw-2,5);
+  // Hair spikes (trailing direction)
+  x.fillStyle='#e8e8f8';
+  const hDir=face>0?-1:1;
+  for(let i=0;i<3;i++){
+    const hxp=face>0?bx+bw-(i*3+2):bx+(i*3+1);
+    x.beginPath(); x.moveTo(hxp,by); x.lineTo(hxp+hDir*3,by-4-i); x.lineTo(hxp+hDir*-2,by); x.fill();
+  }
+  // Long trailing hair strand
+  x.strokeStyle='rgba(220,220,240,0.7)'; x.lineWidth=1;
+  x.beginPath(); x.moveTo(face>0?bx+2:bx+bw-2,by+2);
+  x.quadraticCurveTo(face>0?bx-3:bx+bw+3,by+8,face>0?bx-2:bx+bw+2,by+16); x.stroke();
+  // Eyes — red, glowing
+  const eyeX=face>0?bx+bw-6:bx+1;
+  x.save(); x.shadowColor='#ff1133'; x.shadowBlur=10;
+  x.fillStyle='#0a0008'; x.fillRect(eyeX,by+4,4,3); // socket
+  x.fillStyle='#ff2244'; x.fillRect(eyeX+1,by+4,2,3); // iris
+  x.fillStyle='#ff9999'; x.fillRect(eyeX+1,by+4,1,1); // highlight
+  x.shadowBlur=0; x.restore();
+  // Attack — sword extends forward, arc slash
+  if(atk>6){
+    const t=(atk-6)/8;
+    const slashX=face>0?bx+bw:bx-28;
+    x.save(); x.globalAlpha=t*0.92;
+    // Sword blade
+    x.shadowColor='#88bbff'; x.shadowBlur=12;
+    x.strokeStyle='#ddeeff'; x.lineWidth=1.5;
+    x.beginPath();
+    x.moveTo(slashX+(face>0?2:26),by+bh*0.22);
+    x.lineTo(slashX+(face>0?28:2), by+bh*0.72); x.stroke();
+    // Cross-guard
+    x.fillStyle='#aabb88'; x.shadowBlur=0;
+    x.fillRect(slashX+(face>0?24:2),by+bh*0.65,7,2);
+    // Slash arc glow
+    x.strokeStyle='rgba(180,210,255,0.55)'; x.lineWidth=5; x.shadowBlur=8; x.shadowColor='#aaddff';
+    x.beginPath();
+    x.arc(bx+bw/2,by+bh*0.48,22,face>0?-0.6:-Math.PI+0.6,face>0?0.6:-Math.PI-0.6,face<0);
+    x.stroke(); x.shadowBlur=0; x.restore();
+  }
+}
+
+// ── Enemy sprite router ──────────────────────────────────────────────────────
+function drawEnemyBody(e,flash){
+  switch(e.type){
+    case 'Skeleton':    drawSkeleton(e,flash);    break;
+    case 'Zombie':      drawZombie(e,flash);       break;
+    case 'Shade':       drawShade(e,flash);        break;
+    case 'Wraith':      drawWraith(e,flash);       break;
+    case 'Gear Golem':  drawGearGolem(e,flash);    break;
+    case 'Vampire Bat': drawVampireBat(e,flash);   break;
+    default: {
+      const dg=x.createLinearGradient(e.x,e.y,e.x,e.y+e.h);
+      if(flash){dg.addColorStop(0,'#fff');dg.addColorStop(1,'#ddd');}
+      else{dg.addColorStop(0,e.col);dg.addColorStop(1,e.col.replace('#','#')+'88');}
+      x.fillStyle=flash?'#fff':dg; x.fillRect(e.x,e.y,e.w,e.h);
+      x.strokeStyle='rgba(0,0,0,0.6)'; x.lineWidth=1; x.strokeRect(e.x+.5,e.y+.5,e.w-1,e.h-1);
+      break;
+    }
+  }
+}
+
+// ── Skeleton — SOTN undead warrior with rusted sword ─────────────────────────
+function drawSkeleton(e,fl){
+  const bx=e.x,by=e.y,bw=e.w,bh=e.h,cx=bx+bw/2;
+  const bc=fl?'#ffffff':'#d0ccb0', bc2=fl?'#eeeeee':'#b8b49a';
+  // Legs — femur + tibia bones
+  x.strokeStyle=bc; x.lineWidth=fl?2.5:2;
+  x.beginPath(); x.moveTo(cx-3,by+bh*0.58); x.lineTo(cx-4,by+bh*0.78); x.lineTo(cx-3,by+bh); x.stroke();
+  x.beginPath(); x.moveTo(cx+3,by+bh*0.58); x.lineTo(cx+4,by+bh*0.78); x.lineTo(cx+3,by+bh); x.stroke();
+  // Knee caps
+  if(!fl){x.fillStyle='#c0bc9e';x.beginPath();x.arc(cx-4,by+bh*0.78,2,0,7);x.fill();x.beginPath();x.arc(cx+4,by+bh*0.78,2,0,7);x.fill();}
+  // Foot nubs
+  x.fillStyle=bc2; x.fillRect(cx-6,by+bh-3,5,3); x.fillRect(cx,by+bh-3,5,3);
+  // Pelvis / hip bone
+  x.fillStyle=bc;
+  x.beginPath(); x.moveTo(cx-5,by+bh*0.57); x.lineTo(cx,by+bh*0.54); x.lineTo(cx+5,by+bh*0.57);
+  x.lineTo(cx+4,by+bh*0.62); x.lineTo(cx,by+bh*0.64); x.lineTo(cx-4,by+bh*0.62); x.closePath(); x.fill();
+  // Ribcage
+  x.fillStyle=fl?'#fff':'#ccc8b2';
+  x.fillRect(cx-5,by+bh*0.3,10,bh*0.25);
+  // Individual ribs (character detail)
+  if(!fl){
+    x.strokeStyle='rgba(0,0,0,0.3)'; x.lineWidth=0.8;
+    for(let i=0;i<4;i++){
+      const ry=by+bh*(0.33+i*0.055);
+      x.beginPath(); x.moveTo(cx-5,ry); x.bezierCurveTo(cx-8,ry+1,cx-9,ry+3,cx-7,ry+4); x.stroke();
+      x.beginPath(); x.moveTo(cx+5,ry); x.bezierCurveTo(cx+8,ry+1,cx+9,ry+3,cx+7,ry+4); x.stroke();
+    }
+    // Spine
+    x.strokeStyle='rgba(0,0,0,0.25)'; x.lineWidth=1.2;
+    x.setLineDash([2,1]);
+    x.beginPath(); x.moveTo(cx,by+bh*0.3); x.lineTo(cx,by+bh*0.57); x.stroke();
+    x.setLineDash([]);
+  }
+  // Weapon arm (sword side matches facing)
+  const aSx=e.face>0?cx+4:cx-4;
+  x.strokeStyle=bc; x.lineWidth=fl?2.5:2;
+  x.beginPath();
+  x.moveTo(e.face>0?cx-4:cx+4,by+bh*0.33);
+  x.lineTo(aSx+e.face*5,by+bh*0.48);
+  x.lineTo(aSx+e.face*4,by+bh*0.63); x.stroke();
+  // Rusted sword
+  x.strokeStyle=fl?'#fff':'#788a6a'; x.lineWidth=1.5;
+  x.beginPath(); x.moveTo(aSx+e.face*4,by+bh*0.63); x.lineTo(aSx+e.face*7,by+bh*0.90); x.stroke();
+  x.fillStyle=fl?'#fff':'#8a9878'; // crossguard
+  x.fillRect(aSx+e.face*2,by+bh*0.64,e.face*9,1.5);
+  // Off arm — slightly raised
+  x.strokeStyle=bc; x.lineWidth=fl?2.5:2;
+  x.beginPath();
+  x.moveTo(e.face>0?cx+4:cx-4,by+bh*0.33);
+  x.lineTo(e.face>0?cx-2:cx+2,by+bh*0.5); x.stroke();
+  // Skull
+  x.fillStyle=fl?'#fff':'#d8d4b8';
+  x.beginPath(); x.ellipse(cx,by+bh*0.16,bw*0.27,bh*0.145,0,0,7); x.fill();
+  // Cranial detail lines
+  if(!fl){
+    x.strokeStyle='rgba(0,0,0,0.12)'; x.lineWidth=0.5;
+    x.beginPath(); x.moveTo(cx-4,by+bh*0.07); x.quadraticCurveTo(cx,by+bh*0.04,cx+4,by+bh*0.07); x.stroke();
+  }
+  // Jaw
+  x.fillStyle=fl?'#fff':'#c8c4a0';
+  x.beginPath(); x.moveTo(cx-bw*0.22,by+bh*0.24); x.lineTo(cx,by+bh*0.29); x.lineTo(cx+bw*0.22,by+bh*0.24);
+  x.lineTo(cx+bw*0.18,by+bh*0.27); x.lineTo(cx,by+bh*0.31); x.lineTo(cx-bw*0.18,by+bh*0.27); x.closePath(); x.fill();
+  // Teeth
+  if(!fl){x.fillStyle='#e8e4c8';for(let t=0;t<4;t++)x.fillRect(cx-4+t*2.5,by+bh*0.255,1.8,2.5);}
+  // Nose cavity
+  x.fillStyle=fl?'rgba(200,200,200,0.3)':'#1a0e00';
+  x.fillRect(cx-1.5,by+bh*0.19,3,2.5);
+  // Eye sockets
+  x.fillStyle=fl?'rgba(200,200,200,0.4)':'#160800';
+  x.beginPath(); x.ellipse(cx-3.5,by+bh*0.13,2.8,2.5,0,0,7); x.fill();
+  x.beginPath(); x.ellipse(cx+3.5,by+bh*0.13,2.8,2.5,0,0,7); x.fill();
+  // Glowing red eye-fire
+  x.save(); x.shadowColor='#ff4400'; x.shadowBlur=8;
+  x.fillStyle=fl?'#ffaaaa':'#ee3300';
+  x.beginPath(); x.arc(cx-3.5,by+bh*0.13,1.4,0,7); x.fill();
+  x.beginPath(); x.arc(cx+3.5,by+bh*0.13,1.4,0,7); x.fill();
+  x.shadowBlur=0; x.restore();
+}
+
+// ── Zombie — SOTN rotting undead in tattered burial clothes ─────────────────
+function drawZombie(e,fl){
+  const bx=e.x,by=e.y,bw=e.w,bh=e.h,cx=bx+bw/2;
+  // Tattered trousers — dark brown rot
+  x.fillStyle=fl?'#fff':'#2e1a10';
+  x.fillRect(bx+1,by+bh*0.56,bw*0.38,bh*0.44);
+  x.fillRect(bx+bw*0.55,by+bh*0.56,bw*0.38,bh*0.44);
+  // Rot patches on legs
+  if(!fl){
+    x.fillStyle='rgba(55,85,25,0.55)'; x.fillRect(bx+2,by+bh*0.67,bw*0.32,5);
+    x.fillStyle='rgba(55,85,25,0.35)'; x.fillRect(bx+bw*0.56,by+bh*0.72,bw*0.30,4);
+  }
+  // Torso shirt (burial gown, soaked in decay)
+  const tg=x.createLinearGradient(bx,by+bh*0.24,bx+bw,by+bh*0.57);
+  if(fl){tg.addColorStop(0,'#fff');tg.addColorStop(1,'#ddd');}
+  else{tg.addColorStop(0,'#3c5222');tg.addColorStop(0.5,'#2c3d18');tg.addColorStop(1,'#1e2a10');}
+  x.fillStyle=tg; x.fillRect(bx,by+bh*0.24,bw,bh*0.34);
+  // Cloth tear lines
+  if(!fl){
+    x.strokeStyle='rgba(0,0,0,0.35)'; x.lineWidth=0.7;
+    x.beginPath(); x.moveTo(bx+3,by+bh*0.34); x.lineTo(bx+5,by+bh*0.55); x.stroke();
+    x.beginPath(); x.moveTo(bx+bw-4,by+bh*0.30); x.lineTo(bx+bw-3,by+bh*0.50); x.stroke();
+    // Exposed rib hint through torn shirt
+    x.fillStyle='rgba(160,150,100,0.15)';
+    for(let i=0;i<3;i++) x.fillRect(cx-4,by+bh*(0.30+i*0.07),8,1);
+  }
+  // Outstretched reaching arm (zombie shuffle)
+  x.fillStyle=fl?'#fff':'#42561c';
+  x.fillRect(e.face>0?bx+bw:bx-8,by+bh*0.28,8,5);
+  if(!fl){
+    // Claw fingers
+    x.strokeStyle='#2a3a10'; x.lineWidth=0.8;
+    const hbx=e.face>0?bx+bw+8:bx-8;
+    for(let i=0;i<3;i++){
+      x.beginPath(); x.moveTo(hbx,by+bh*0.295+i*1.5);
+      x.lineTo(hbx+e.face*4,by+bh*0.27+i*1.5); x.stroke();
+    }
+  }
+  // Trailing arm (dragging)
+  x.fillStyle=fl?'#fff':'#3c501a';
+  x.fillRect(e.face>0?bx-2:bx+bw-6,by+bh*0.32,6,4);
+  // Neck
+  x.fillStyle=fl?'#fff':'#4a5c24'; x.fillRect(cx-2,by+bh*0.2,4,bh*0.06);
+  // Head — bloated decay
+  const hg=x.createLinearGradient(cx,by,cx+bw*0.2,by+bh*0.24);
+  if(fl){hg.addColorStop(0,'#fff');hg.addColorStop(1,'#eee');}
+  else{hg.addColorStop(0,'#526028');hg.addColorStop(0.6,'#3c4a1c');hg.addColorStop(1,'#2a341a');}
+  x.fillStyle=hg;
+  x.beginPath(); x.ellipse(cx,by+bh*0.135,bw*0.27,bh*0.145,Math.sin(Date.now()/2000)*0.05,0,7); x.fill();
+  // Hollow eye sockets
+  x.fillStyle=fl?'rgba(200,200,200,0.4)':'#181400';
+  x.beginPath(); x.ellipse(cx-3.5,by+bh*0.11,2.8,2.2,0,0,7); x.fill();
+  // Yellow-green zombie eye glow (SOTN undead palette)
+  x.save(); x.shadowColor='#aadd00'; x.shadowBlur=7;
+  x.fillStyle=fl?'#ffffaa':'#88cc00';
+  x.beginPath(); x.arc(cx-3.5,by+bh*0.11,1.2,0,7); x.fill();
+  x.shadowBlur=0; x.restore();
+  // Mouth — gaping rictus
+  if(!fl){
+    x.strokeStyle='#1a0c00'; x.lineWidth=1;
+    x.beginPath(); x.moveTo(cx-3,by+bh*0.195); x.quadraticCurveTo(cx,by+bh*0.225,cx+3,by+bh*0.195); x.stroke();
+    x.fillStyle='#0e0800';
+    x.beginPath(); x.ellipse(cx,by+bh*0.205,3,1.5,0,0,7); x.fill();
+  }
+}
+
+// ── Shade — ethereal ghost, Catacombs (translucent, no legs, fades at bottom) ──
+function drawShade(e,fl){
+  const bx=e.x,by=e.y,bw=e.w,bh=e.h,cx=bx+bw/2;
+  const hover=Math.sin(Date.now()/600+e.x*0.01)*3;
+  const ty=by+hover;
+  // Ghost body — fades out from waist down
+  const sg=x.createLinearGradient(cx,ty,cx,ty+bh);
+  if(fl){sg.addColorStop(0,'rgba(255,255,255,0.9)');sg.addColorStop(0.5,'rgba(255,255,255,0.6)');sg.addColorStop(1,'transparent');}
+  else{sg.addColorStop(0,'rgba(100,108,160,0.88)');sg.addColorStop(0.45,'rgba(70,80,130,0.65)');sg.addColorStop(0.75,'rgba(50,55,100,0.30)');sg.addColorStop(1,'transparent');}
+  x.fillStyle=sg;
+  x.beginPath();
+  x.moveTo(bx+2,ty+bh*0.08);
+  x.quadraticCurveTo(bx-3,ty+bh*0.5,bx+1,ty+bh);
+  x.lineTo(bx+bw-1,ty+bh);
+  x.quadraticCurveTo(bx+bw+3,ty+bh*0.5,bx+bw-2,ty+bh*0.08);
+  x.arc(cx,ty+bh*0.08,bw*0.45,0,Math.PI,true);
+  x.fill();
+  // Wispy tendrils at bottom
+  if(!fl){
+    x.strokeStyle='rgba(90,100,160,0.35)'; x.lineWidth=1.5;
+    for(let i=0;i<3;i++){
+      const tx2=bx+bw*0.2+i*bw*0.3;
+      x.beginPath(); x.moveTo(tx2,ty+bh*0.75);
+      x.quadraticCurveTo(tx2+(i-1)*4,ty+bh*0.9,tx2+(i-1)*2,ty+bh); x.stroke();
+    }
+  }
+  // Hood / head suggestion
+  x.fillStyle=fl?'rgba(255,255,255,0.9)':'rgba(80,90,148,0.92)';
+  x.beginPath(); x.ellipse(cx,ty+bh*0.16,bw*0.28,bh*0.16,0,0,7); x.fill();
+  // Dark hollow eyes — white spectral glow
+  x.save(); x.shadowColor='#aab8ff'; x.shadowBlur=10;
+  x.fillStyle=fl?'#ffffff':'#c8d4ff';
+  x.beginPath(); x.arc(cx-3.5,ty+bh*0.14,2,0,7); x.fill();
+  x.beginPath(); x.arc(cx+3.5,ty+bh*0.14,2,0,7); x.fill();
+  x.shadowBlur=0; x.restore();
+  // Ambient mote trail
+  if(!fl&&Math.random()<0.08){
+    particles.push({x:cx+(Math.random()-0.5)*bw,y:ty+bh*0.6,vx:(Math.random()-0.5)*0.4,
+      vy:-0.4-Math.random()*0.5,life:60,maxLife:60,color:'#8898cc',size:1.5,grav:-0.003,glow:1});
+  }
+}
+
+// ── Wraith — dark specter, Catacombs (more solid than Shade, violet menace) ──
+function drawWraith(e,fl){
+  const bx=e.x,by=e.y,bw=e.w,bh=e.h,cx=bx+bw/2;
+  const hover=Math.sin(Date.now()/450+e.x*0.02)*2.5;
+  const ty=by+hover;
+  // Flowing dark cloak
+  const wcg=x.createLinearGradient(cx,ty,cx,ty+bh);
+  if(fl){wcg.addColorStop(0,'#fff');wcg.addColorStop(1,'rgba(255,255,255,0.2)');}
+  else{wcg.addColorStop(0,'#1e0838');wcg.addColorStop(0.45,'#150528');wcg.addColorStop(0.8,'rgba(12,2,22,0.6)');wcg.addColorStop(1,'transparent');}
+  x.fillStyle=wcg;
+  x.beginPath();
+  x.moveTo(bx+2,ty+bh*0.1);
+  x.quadraticCurveTo(bx-5,ty+bh*0.55,bx,ty+bh);
+  x.lineTo(bx+bw,ty+bh);
+  x.quadraticCurveTo(bx+bw+5,ty+bh*0.55,bx+bw-2,ty+bh*0.1);
+  x.arc(cx,ty+bh*0.1,bw*0.47,0,Math.PI,true);
+  x.fill();
+  // Cloak edge shimmer
+  if(!fl){
+    x.strokeStyle='rgba(100,30,180,0.4)'; x.lineWidth=1;
+    x.beginPath(); x.moveTo(bx,ty+bh*0.15); x.quadraticCurveTo(bx-4,ty+bh*0.5,bx+2,ty+bh*0.9); x.stroke();
+    x.beginPath(); x.moveTo(bx+bw,ty+bh*0.15); x.quadraticCurveTo(bx+bw+4,ty+bh*0.5,bx+bw-2,ty+bh*0.9); x.stroke();
+  }
+  // Skull face in hood
+  x.fillStyle=fl?'rgba(255,255,255,0.9)':'rgba(30,8,50,0.85)';
+  x.beginPath(); x.ellipse(cx,ty+bh*0.165,bw*0.27,bh*0.155,0,0,7); x.fill();
+  // Claw hands reaching out
+  if(!fl){
+    x.strokeStyle='rgba(80,20,120,0.7)'; x.lineWidth=1;
+    const chx=e.face>0?bx+bw-2:bx+2;
+    for(let i=0;i<3;i++){
+      x.beginPath(); x.moveTo(chx,ty+bh*0.4+i*2);
+      x.lineTo(chx+e.face*8,ty+bh*0.35+i*2); x.stroke();
+    }
+  }
+  // Glowing violet eyes
+  x.save(); x.shadowColor='#cc44ff'; x.shadowBlur=14;
+  x.fillStyle=fl?'#ffaaff':'#dd55ff';
+  x.beginPath(); x.arc(cx-3.5,ty+bh*0.145,2.2,0,7); x.fill();
+  x.beginPath(); x.arc(cx+3.5,ty+bh*0.145,2.2,0,7); x.fill();
+  x.fillStyle='rgba(255,255,255,0.8)'; // specular highlight
+  x.beginPath(); x.arc(cx-2.5,ty+bh*0.135,0.7,0,7); x.fill();
+  x.shadowBlur=0; x.restore();
+  // Ambient purple motes
+  if(!fl&&Math.random()<0.06){
+    particles.push({x:cx+(Math.random()-0.5)*bw*0.8,y:ty+bh*0.5,vx:(Math.random()-0.5)*0.3,
+      vy:-0.5-Math.random()*0.6,life:70,maxLife:70,color:'#9922cc',size:1.8,grav:-0.003,glow:1});
+  }
+}
+
+// ── Gear Golem — Clocktower mechanical guardian, bronze-armored ───────────────
+function drawGearGolem(e,fl){
+  const bx=e.x,by=e.y,bw=e.w,bh=e.h,cx=bx+bw/2;
+  // Heavy leg pistons
+  x.fillStyle=fl?'#fff':'#4a2e0e';
+  x.fillRect(bx+2,by+bh*0.6,bw*0.35,bh*0.4);
+  x.fillRect(bx+bw*0.6,by+bh*0.6,bw*0.35,bh*0.4);
+  if(!fl){
+    // Piston detail
+    x.fillStyle='#6a3e14'; x.fillRect(bx+2,by+bh*0.6,bw*0.35,3);
+    x.fillStyle='#6a3e14'; x.fillRect(bx+bw*0.6,by+bh*0.6,bw*0.35,3);
+    x.fillStyle='rgba(120,70,20,0.4)';
+    for(let i=0;i<3;i++){x.fillRect(bx+3+i*4,by+bh*(0.64+i*0.08),3,2);x.fillRect(bx+bw*0.61+i*4,by+bh*(0.64+i*0.08),3,2);}
+  }
+  // Torso armour plate
+  const bg=x.createLinearGradient(bx,by+bh*0.22,bx+bw,by+bh*0.62);
+  if(fl){bg.addColorStop(0,'#fff');bg.addColorStop(1,'#ddd');}
+  else{bg.addColorStop(0,'#8a5a18');bg.addColorStop(0.4,'#6a3e10');bg.addColorStop(1,'#3a1e04');}
+  x.fillStyle=bg; x.fillRect(bx,by+bh*0.22,bw,bh*0.4);
+  // Rivets on armour
+  if(!fl){
+    x.fillStyle='#c88820';
+    for(const [rx,ry] of [[bx+2,by+bh*0.25],[bx+bw-4,by+bh*0.25],[bx+2,by+bh*0.55],[bx+bw-4,by+bh*0.55]])
+      {x.beginPath();x.arc(rx+1,ry+1,1.5,0,7);x.fill();}
+  }
+  // Gear-chest (spinning)
+  const spin=Date.now()/900;
+  const gcx=cx, gcy=by+bh*0.4, gr=bw*0.26;
+  x.save(); x.translate(gcx,gcy); x.rotate(spin);
+  x.fillStyle=fl?'#fff':'#cc7a18'; x.strokeStyle=fl?'#eee':'#3a1e04'; x.lineWidth=1;
+  for(let i=0;i<6;i++){x.rotate(Math.PI/3);x.fillRect(-2,-gr-2,4,5);}
+  x.beginPath(); x.arc(0,0,gr*0.88,0,7); x.fill(); x.stroke();
+  x.fillStyle=fl?'#eee':'#2a1204'; x.beginPath(); x.arc(0,0,gr*0.38,0,7); x.fill();
+  // Clock tick marks
+  if(!fl){x.strokeStyle='rgba(255,210,80,0.5)'; x.lineWidth=0.6;
+    for(let i=0;i<12;i++){x.rotate(Math.PI/6);x.beginPath();x.moveTo(0,-gr*0.68);x.lineTo(0,-gr*0.82);x.stroke();}}
+  x.restore();
+  // Shoulder pauldrons
+  x.fillStyle=fl?'#fff':'#7a4e10';
+  x.fillRect(bx-3,by+bh*0.22,8,7); x.fillRect(bx+bw-5,by+bh*0.22,8,7);
+  // Head — armoured box
+  const hg=x.createLinearGradient(cx,by,cx,by+bh*0.22);
+  if(fl){hg.addColorStop(0,'#fff');hg.addColorStop(1,'#eee');}
+  else{hg.addColorStop(0,'#8a5a18');hg.addColorStop(1,'#5a3a0e');}
+  x.fillStyle=hg; x.fillRect(cx-bw*0.28,by,bw*0.56,bh*0.23);
+  // Visor slit
+  x.fillStyle=fl?'rgba(200,200,200,0.4)':'#0a0602';
+  x.fillRect(cx-bw*0.2,by+bh*0.1,bw*0.4,bh*0.05);
+  // Amber eye glow through visor
+  x.save(); x.shadowColor='rgba(255,150,0,1)'; x.shadowBlur=12;
+  x.fillStyle=fl?'#ffffaa':'#ffaa00';
+  x.beginPath(); x.arc(cx,by+bh*0.125,bw*0.09,0,7); x.fill();
+  x.fillStyle='rgba(255,255,255,0.8)'; x.beginPath(); x.arc(cx-1,by+bh*0.115,bw*0.03,0,7); x.fill();
+  x.shadowBlur=0; x.restore();
+}
+
+// ── Vampire Bat — Clocktower aerial pest, hanging + swooping ─────────────────
+function drawVampireBat(e,fl){
+  const bx=e.x,by=e.y,bw=e.w,bh=e.h,cx=bx+bw/2,cy=by+bh/2;
+  const wflap=Math.sin(Date.now()/120+e.x*0.05); // wing flap cycle
+  // Left wing
+  x.fillStyle=fl?'rgba(255,255,255,0.8)':'rgba(88,22,28,0.88)';
+  x.beginPath();
+  x.moveTo(cx-2,cy);
+  x.quadraticCurveTo(bx-bw*0.15+wflap*3,cy-bh*0.4,bx-bw*0.1,cy+bh*0.2+wflap*2);
+  x.quadraticCurveTo(cx-bw*0.35,cy+bh*0.35,cx-2,cy+bh*0.15); x.fill();
+  // Right wing
+  x.fillStyle=fl?'rgba(255,255,255,0.8)':'rgba(88,22,28,0.88)';
+  x.beginPath();
+  x.moveTo(cx+2,cy);
+  x.quadraticCurveTo(bx+bw*1.15-wflap*3,cy-bh*0.4,bx+bw*1.1,cy+bh*0.2-wflap*2);
+  x.quadraticCurveTo(cx+bw*0.35,cy+bh*0.35,cx+2,cy+bh*0.15); x.fill();
+  // Wing membrane veins
+  if(!fl){
+    x.strokeStyle='rgba(60,10,15,0.4)'; x.lineWidth=0.5;
+    x.beginPath(); x.moveTo(cx-2,cy); x.lineTo(bx-bw*0.08,cy+bh*0.15+wflap*1.5); x.stroke();
+    x.beginPath(); x.moveTo(cx+2,cy); x.lineTo(bx+bw*1.08,cy+bh*0.15-wflap*1.5); x.stroke();
+  }
+  // Body — small furry oval
+  x.fillStyle=fl?'#fff':'#2a0e12';
+  x.beginPath(); x.ellipse(cx,cy,bw*0.2,bh*0.32,0,0,7); x.fill();
+  // Ears
+  x.fillStyle=fl?'#fff':'#3a1218';
+  x.beginPath(); x.moveTo(cx-3,cy-bh*0.28); x.lineTo(cx-5,cy-bh*0.5); x.lineTo(cx-1,cy-bh*0.28); x.fill();
+  x.beginPath(); x.moveTo(cx+3,cy-bh*0.28); x.lineTo(cx+5,cy-bh*0.5); x.lineTo(cx+1,cy-bh*0.28); x.fill();
+  // Red eyes
+  x.save(); x.shadowColor='#ff2200'; x.shadowBlur=6;
+  x.fillStyle=fl?'#ffaaaa':'#ff2200';
+  x.beginPath(); x.arc(cx-2.5,cy-bh*0.05,1.5,0,7); x.fill();
+  x.beginPath(); x.arc(cx+2.5,cy-bh*0.05,1.5,0,7); x.fill();
+  x.shadowBlur=0; x.restore();
+  // Tiny fangs
+  if(!fl){x.fillStyle='#e8e0d0';x.fillRect(cx-2,cy+bh*0.18,1.5,2);x.fillRect(cx+0.5,cy+bh*0.18,1.5,2);}
+}
+
 // ── Stone tile texture pre-generation ────────────────────────────────────────
 function mkStone(seed){
-  const oc=document.createElement('canvas');
-  oc.width=20; oc.height=20;
-  const oc2=oc.getContext('2d');
-  // Base fill
-  oc2.fillStyle=`hsl(255,${16+seed*2}%,${11+seed}%)`;
-  oc2.fillRect(0,0,20,20);
-  // Per-pixel noise via seeded LCG
-  const id=oc2.getImageData(0,0,20,20);
-  const d=id.data;
-  let r=(seed*6364136223846793005+1442695040888963407)>>>0;
+  const oc=document.createElement('canvas'); oc.width=20; oc.height=20;
+  const c=oc.getContext('2d');
+  // Varied stone base hue — gothic grey-purple palette
+  const hue=248+(seed%3)*6, sat=14+seed%5, lit=10+seed*1.4;
+  c.fillStyle=`hsl(${hue},${sat}%,${lit}%)`;
+  c.fillRect(0,0,20,20);
+  // LCG per-pixel noise for rock surface grain
+  const id=c.getImageData(0,0,20,20); const d=id.data;
+  let rv=(seed*1664525+1013904223)>>>0;
   for(let i=0;i<400;i++){
-    r=(r*1664525+1013904223)>>>0;
-    const v=((r>>>24)&0xff)/255;
-    const vary=Math.floor(v*16)-8;
-    const idx=i*4;
-    d[idx]=Math.max(0,Math.min(255,d[idx]+vary));
-    d[idx+1]=Math.max(0,Math.min(255,d[idx+1]+vary));
-    d[idx+2]=Math.max(0,Math.min(255,d[idx+2]+vary));
+    rv=(rv*1664525+1013904223)>>>0;
+    const vary=Math.floor(((rv>>>24)/255)*22)-11;
+    d[i*4]  =Math.max(0,Math.min(255,d[i*4]  +vary));
+    d[i*4+1]=Math.max(0,Math.min(255,d[i*4+1]+vary));
+    d[i*4+2]=Math.max(0,Math.min(255,d[i*4+2]+Math.floor(vary*0.7)));
   }
-  oc2.putImageData(id,0,0);
-  // 1px top highlight
-  oc2.fillStyle='rgba(255,255,255,0.07)';
-  oc2.fillRect(0,0,20,1);
-  // 1px bottom shadow
-  oc2.fillStyle='rgba(0,0,0,0.55)';
-  oc2.fillRect(0,19,20,1);
-  // 1px right shadow
-  oc2.fillStyle='rgba(0,0,0,0.3)';
-  oc2.fillRect(19,0,1,20);
-  // Crack line if seed%3===0
-  if(seed%3===0){
-    oc2.strokeStyle='rgba(0,0,0,0.35)';
-    oc2.lineWidth=0.4;
-    oc2.beginPath();
-    oc2.moveTo(3,2);
-    oc2.lineTo(10,11);
-    oc2.lineTo(17,18);
-    oc2.stroke();
+  c.putImageData(id,0,0);
+  // Rock-face cell shading — simulate Voronoi weathering with sine bands
+  c.globalAlpha=0.08+seed*0.01;
+  c.fillStyle=`rgba(${180+seed*5},${160+seed*3},${200+seed*2},1)`;
+  for(let yy=0;yy<20;yy+=6+seed%3){
+    c.fillRect(0,yy,20,1);
   }
-  // 0.5px black border
-  oc2.strokeStyle='rgba(0,0,0,1)';
-  oc2.lineWidth=0.5;
-  oc2.strokeRect(0,0,20,20);
+  c.globalAlpha=1;
+  // Mortar groove — 1px recessed border
+  c.fillStyle='rgba(0,0,0,0.55)'; c.fillRect(0,19,20,1); c.fillRect(19,0,1,20);
+  c.fillStyle='rgba(0,0,0,0.30)'; c.fillRect(0,0,1,20);  c.fillRect(0,0,20,1);
+  // Top ledge highlight (HDRP key light simulation)
+  c.fillStyle='rgba(220,210,255,0.09)'; c.fillRect(0,0,20,2);
+  // Seeded crack patterns — 3 variants
+  c.strokeStyle='rgba(0,0,0,0.40)'; c.lineWidth=0.5;
+  if(seed%4===0){
+    c.beginPath(); c.moveTo(4,1); c.lineTo(8,9); c.lineTo(5,18); c.stroke();
+  } else if(seed%4===1){
+    c.beginPath(); c.moveTo(14,2); c.lineTo(10,8); c.lineTo(16,15); c.stroke();
+  } else if(seed%4===2){
+    c.beginPath(); c.moveTo(2,6); c.lineTo(12,10); c.stroke();
+    c.beginPath(); c.moveTo(12,10); c.lineTo(16,16); c.stroke();
+  }
+  // Moss/damp stain on random tiles
+  if(seed%5===0){
+    c.globalAlpha=0.12;
+    const mg=c.createLinearGradient(0,10,0,20);
+    mg.addColorStop(0,'transparent'); mg.addColorStop(1,'rgba(40,80,20,1)');
+    c.fillStyle=mg; c.fillRect(0,10,20,10);
+    c.globalAlpha=1;
+  }
+  // Subtle border
+  c.strokeStyle='rgba(0,0,0,0.8)'; c.lineWidth=0.5; c.strokeRect(0.25,0.25,19.5,19.5);
   return oc;
 }
 const STONE_VARS=Array.from({length:8},(_,i)=>mkStone(i));
@@ -2009,20 +2475,8 @@ function draw(){
     if(e.dead)x.globalAlpha=Math.max(0,1-e.dissolve*1.5);
     const flash=e.hitFlash>0;
     // Shadow
-    x.fillStyle='rgba(0,0,0,0.35)'; x.fillRect(e.x+3,e.y+e.h,e.w-6,5);
-    // Body
-    const eg=x.createLinearGradient(e.x,e.y,e.x,e.y+e.h);
-    if(flash){eg.addColorStop(0,'#ffffff');eg.addColorStop(1,'#dddddd');}
-    else{eg.addColorStop(0,e.col);eg.addColorStop(1,e.col.replace('#','#')+'88');}
-    x.fillStyle=flash?'#fff':eg; x.fillRect(e.x,e.y,e.w,e.h);
-    // Outline
-    x.strokeStyle=flash?'#fff':'rgba(0,0,0,0.6)';x.lineWidth=1;x.strokeRect(e.x+.5,e.y+.5,e.w-1,e.h-1);
-    // Eye
-    const eyeX=e.face>0?e.x+e.w-7:e.x+3;
-    x.fillStyle=flash?'#f00':'#ff2200';
-    x.shadowColor='#ff2200';x.shadowBlur=4;
-    x.beginPath();x.arc(eyeX+1.5,e.y+7,2.5,0,7);x.fill();
-    x.shadowBlur=0;
+    if(!e.fly) { x.fillStyle='rgba(0,0,0,0.35)'; x.fillRect(e.x+3,e.y+e.h,e.w-6,5); }
+    drawEnemyBody(e,flash);
     // HP bar
     if(!e.dead){
       x.fillStyle='rgba(0,0,0,0.7)'; x.fillRect(e.x,e.y-7,e.w,4);
@@ -2253,20 +2707,7 @@ function draw(){
   const pX=P.x-(pw-P.w)/2, pY=P.y+(P.h-ph);
   // Shadow
   x.fillStyle='rgba(0,0,0,0.3)'; x.fillRect(pX+2,P.y+P.h,pw-4,5);
-  // Cloak (body)
-  const pg=x.createLinearGradient(pX,pY,pX,pY+ph);
-  pg.addColorStop(0,'#2a2040');pg.addColorStop(0.4,'#1c1630');pg.addColorStop(1,'#12101f');
-  x.fillStyle=pg; x.fillRect(pX,pY,pw,ph);
-  // Cloak edge highlight
-  x.fillStyle='rgba(180,160,220,0.12)'; x.fillRect(P.face>0?P.x:P.x+P.w-2,P.y,2,P.h);
-  // Collar/shoulder
-  x.fillStyle='#6a1020'; x.fillRect(P.x-1,P.y,P.w+2,8);
-  x.fillStyle='#8a1828'; x.fillRect(P.x,P.y,P.w,3);
-  // Eye
-  const eyePx=P.face>0?P.x+P.w-5:P.x+2;
-  x.shadowColor='#ff1122'; x.shadowBlur=10;
-  x.fillStyle='#ff3344'; x.fillRect(eyePx,P.y+3,3,3);
-  x.shadowBlur=0;
+  drawPlayerSprite(pX,pY,pw,ph,P.face,P.atk);
   // Torch rim light — warm directional edge on the side facing the nearest torch
   if(currentRoom===1){
     const Kl=kl();
@@ -2282,15 +2723,6 @@ function draw(){
         x.restore();
       }
     }
-  }
-  // Attack flash
-  if(P.atk>6){
-    x.globalAlpha=0.55;
-    const ax=P.face>0?P.x+P.w:P.x-30;
-    x.fillStyle='rgba(200,225,255,0.45)'; x.fillRect(ax,P.y-2,30,P.h+4);
-    x.shadowColor='#ffffff';x.shadowBlur=8;
-    x.strokeStyle='rgba(255,255,255,0.8)';x.lineWidth=1;x.strokeRect(ax,P.y-2,30,P.h+4);
-    x.shadowBlur=0;
   }
   x.restore();
 
