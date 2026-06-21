@@ -156,7 +156,7 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{K[e.key.toLowerCase()]=false;if(e.key===' ')K['space']=false;});
 
-let hitstop=0, shake=0;
+let hitstop=0, shake=0, hitLight=null; // {x,y,t,r,col} — impact flash on lighting canvas
 const toast=(t)=>{const el=document.getElementById('toast');el.textContent=t;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');};
 
 // ── Room state ────────────────────────────────────────────────────────────────
@@ -226,17 +226,17 @@ let Time_frozen = false;
 // ════════════════════════════════════════════════════════════════════════════
 const ZONE_ATMOS={
   1:{ name:'Entrance Hall',
-      sky:['#070418','#0c0820'], silhouette:'spires', drift:0.018,
-      fog:'rgba(28,16,52,0.20)', fogTop:0.42, mote:'#b8a0e0', motes:4,
-      grade:'rgba(40,20,60,0.07)', drip:0, steam:0, lightPool:'rgba(255,165,40,0.55)' },
+      sky:['#060316','#0b071e'], silhouette:'spires', drift:0.018,
+      fog:'rgba(28,16,52,0.23)', fogTop:0.40, mote:'#b8a0e0', motes:5,
+      grade:'rgba(40,20,60,0.10)', drip:0, steam:0, lightPool:'rgba(255,165,40,0.62)' },
   2:{ name:'Catacombs',
-      sky:['#0a0402','#150806'], silhouette:'stalactites', drift:0.008,
-      fog:'rgba(54,24,14,0.24)', fogTop:0.50, mote:'#c8a070', motes:5,
-      grade:'rgba(60,25,10,0.085)', drip:0.5, steam:0, lightPool:'rgba(255,140,30,0.5)' },
+      sky:['#090302','#130605'], silhouette:'stalactites', drift:0.008,
+      fog:'rgba(54,24,14,0.28)', fogTop:0.48, mote:'#c8a070', motes:6,
+      grade:'rgba(60,25,10,0.11)', drip:0.7, steam:0, lightPool:'rgba(255,140,30,0.58)' },
   3:{ name:'Clocktower',
-      sky:['#040810','#06101a'], silhouette:'gears', drift:0.022,
-      fog:'rgba(14,28,40,0.18)', fogTop:0.40, mote:'#88c0d8', motes:4,
-      grade:'rgba(10,30,45,0.075)', drip:0, steam:96, lightPool:'rgba(120,200,230,0.42)' }
+      sky:['#030710','#050e18'], silhouette:'gears', drift:0.022,
+      fog:'rgba(14,28,40,0.21)', fogTop:0.38, mote:'#88c0d8', motes:5,
+      grade:'rgba(10,30,45,0.10)', drip:0, steam:55, lightPool:'rgba(120,200,230,0.52)' }
 };
 const atmos=()=>ZONE_ATMOS[currentRoom]||ZONE_ATMOS[1];
 
@@ -301,7 +301,7 @@ set(10,20,1);set(10,21,1);set(10,22,1);set(10,23,1);set(10,24,1);
   hourglassUnlocked=false; hourglassCd=0; hrHead=0; hrCount=0; hrRewinding=false; hrRewindT=0;
   boss3=null; boss3Triggered=false;
   tether=null; P.wraith=0; pendulum=null;
-  caFlash=0; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
+  caFlash=0; hitLight=null; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
   gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
   fanfare=null; Time_frozen=false;
   initRoom1Gates();
@@ -365,7 +365,7 @@ function startTransition(){
     P.x=spawnCur.x;P.y=spawnCur.y;P.vx=0;P.vy=0;P.climbing=false;
     shots=[];particles=[];
     bossTriggered=false; boss=null;
-    caFlash=0; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
+    caFlash=0; hitLight=null; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
     gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; fanfare=null; Time_frozen=false;
     initRoom2Gates();
     const ban=document.getElementById('banner');
@@ -438,7 +438,7 @@ function startTransition3(){
     shots=[];particles=[];
     bossTriggered=false; boss=null;
     boss3=null; boss3Triggered=false; hrHead=0; hrCount=0; hrRewinding=false; hrRewindT=0;
-    caFlash=0; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
+    caFlash=0; hitLight=null; ceilingDrips=[]; steamPuffs=[]; P.squish=0; P.afterimg=[]; P.wasGrounded=false;
     gates=[]; abilityOrbs=[]; lorePickups=[]; statPickups=[]; anchors=[]; phaseWalls=[];
     fanfare=null; Time_frozen=false;
     // Pendulum hazard over the central shaft
@@ -552,7 +552,9 @@ function updateBoss(){
     if(hb.x<boss.x+boss.w&&hb.x+hb.w>boss.x&&hb.y<boss.y+boss.h&&hb.y+hb.h>boss.y){
       const dmg=Math.max(1,8+P.lv*3)+Math.floor(Math.random()*5);
       boss.hp-=dmg; boss.hitFlash=8; hitstop=2; shake=4;
-      addParticles(boss.x+boss.w/2,boss.y+boss.h/2,'#aa88ff',10);
+      spark(boss.x+boss.w/2,boss.y+boss.h*0.35,'#cc99ff',10,P.face,0.65);
+      addParticles(boss.x+boss.w/2,boss.y+boss.h/2,'#aa88ff',6);
+      hitLight={x:boss.x+boss.w/2,y:boss.y+boss.h/3,t:7,r:60,col:'rgba(200,150,255,0.45)'};
       if(boss.hp<=0&&!boss.dead)killBoss();
     }
   }
@@ -715,7 +717,9 @@ function updateBoss3(){
     if(hb.x<boss3.x+boss3.w&&hb.x+hb.w>boss3.x&&hb.y<boss3.y+boss3.h&&hb.y+hb.h>boss3.y){
       const dmg=Math.max(1,8+P.lv*3)+Math.floor(Math.random()*5);
       boss3.hp-=dmg; boss3.hitFlash=8; hitstop=2; shake=4;
-      addParticles(boss3.x+boss3.w/2,boss3.y+boss3.h/2,'#ffaa44',10);
+      spark(boss3.x+boss3.w/2,boss3.y+boss3.h*0.35,'#ffcc55',10,P.face,0.65);
+      addParticles(boss3.x+boss3.w/2,boss3.y+boss3.h/2,'#ffaa44',6);
+      hitLight={x:boss3.x+boss3.w/2,y:boss3.y+boss3.h/3,t:7,r:60,col:'rgba(255,200,100,0.45)'};
       if(boss3.hp<=0&&!boss3.dead)killClockworkBoss();
     }
   }
@@ -993,20 +997,20 @@ function addParticles(px,py,color,n=12){
 
 // Directional impact spark — flings particles in a facing cone (hit sparks).
 function spark(px,py,color,n,dirX,spread=0.7){
-  const base=Math.atan2(-0.3,dirX); // slight upward bias
+  const base=Math.atan2(-0.32,dirX); // slight upward bias
   for(let i=0;i<n;i++){
     const angle=base+(Math.random()-0.5)*spread*2;
-    const spd=2.5+Math.random()*4;
+    const spd=3.2+Math.random()*5.2;
     particles.push({x:px,y:py,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,
-      life:24,maxLife:24,color:color,size:1.5+Math.random()*2.5,grav:0.18});
+      life:30,maxLife:30,color:color,size:2.2+Math.random()*3.4,grav:0.16});
   }
 }
-// Rising soul motes on enemy death — slow ascent, long fade, no gravity.
+// Rising soul motes on enemy death — slow ascent, long fade, glowing.
 function souls(px,py,color,n=8){
   for(let i=0;i<n;i++){
-    particles.push({x:px+(Math.random()-0.5)*16,y:py+(Math.random()-0.5)*16,
-      vx:(Math.random()-0.5)*0.6,vy:-0.6-Math.random()*0.8,
-      life:90,maxLife:90,color:color,size:2+Math.random()*2,grav:-0.005,glow:1});
+    particles.push({x:px+(Math.random()-0.5)*18,y:py+(Math.random()-0.5)*14,
+      vx:(Math.random()-0.5)*0.7,vy:-0.7-Math.random()*1.0,
+      life:100,maxLife:100,color:color,size:2.5+Math.random()*2.5,grav:-0.004,glow:1});
   }
 }
 
@@ -1359,7 +1363,8 @@ function update(){
     // Double jump
     else if(jp&&!P.jumpHeld&&!P.grounded&&doubleJumpUnlocked&&!P_djUsed&&P.coyote<=0){
       P.vy=-5.8;P.jumpHeld=true;P.jumpT=9;P_djUsed=true;
-      addParticles(P.x+P.w/2,P.y+P.h/2,'#44aaff',12);
+      addParticles(P.x+P.w/2,P.y+P.h/2,'#44aaff',16);
+      souls(P.x+P.w/2,P.y+P.h/2,'#88ccff',5);
     }
     if(!jp)P.jumpHeld=false;
     if(P.jumpHeld){P.jumpT--; if(!jp||P.jumpT<=0){if(P.vy<0)P.vy*=0.5;P.jumpHeld=false;}}
@@ -1369,9 +1374,9 @@ function update(){
     moveAxis(P,P.vx,0); moveAxis(P,0,P.vy);
     // Landing impact — squish + dust burst (detect grounded edge)
     if(P.grounded && !P.wasGrounded && P.vy>=0){
-      P.squish=6;
-      for(let i=0;i<5;i++)particles.push({x:P.x+P.w/2+(Math.random()-0.5)*P.w*1.4,y:P.y+P.h,
-        vx:(Math.random()-0.5)*2.2,vy:-Math.random()*0.5,life:22,maxLife:22,color:'#7a6a88',size:1.5+Math.random()*2,grav:0.12});
+      P.squish=9;
+      for(let i=0;i<8;i++)particles.push({x:P.x+P.w/2+(Math.random()-0.5)*P.w*1.8,y:P.y+P.h,
+        vx:(Math.random()-0.5)*3.2,vy:-0.3-Math.random()*1.0,life:28,maxLife:28,color:'#8a7a98',size:2.2+Math.random()*2.8,grav:0.10});
     }
     P.wasGrounded=P.grounded;
     if(P.squish>0)P.squish--;
@@ -1448,11 +1453,12 @@ function update(){
           let dmg=Math.max(1,8+P.lv*3-e.def)+Math.floor(Math.random()*5);
           const crit=Math.random()<0.18;
           if(crit)dmg=Math.floor(dmg*1.6);
-          e.hp-=dmg; e.hitFlash=8; hitstop=crit?4:2; shake=crit?7:4;
+          e.hp-=dmg; e.hitFlash=8; hitstop=crit?5:2; shake=crit?8:4;
           // Directional impact spark flung in facing direction, enemy-tinted.
-          spark(e.x+e.w/2,e.y+e.h/2,crit?'#ffe066':'#ffeeaa',crit?12:6,P.face,crit?1.0:0.6);
-          if(crit)addParticles(e.x+e.w/2,e.y+e.h/2,'#fff2a0',8);
-          if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);souls(e.x+e.w/2,e.y+e.h/2,e.col,8);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,20);checkRoomClear();}
+          spark(e.x+e.w/2,e.y+e.h/2,crit?'#ffe066':'#ffeeaa',crit?18:9,P.face,crit?1.1:0.65);
+          hitLight={x:e.x+e.w/2,y:e.y+e.h/2,t:crit?10:6,r:crit?80:52,col:crit?'rgba(255,240,160,0.55)':'rgba(255,200,120,0.40)'};
+          if(crit){addParticles(e.x+e.w/2,e.y+e.h/2,'#fff2a0',12);souls(e.x+e.w/2,e.y+e.h/2,'#ffe890',4);}
+          if(e.hp<=0&&!e.dead){e.dead=1;gainExp(e.exp);souls(e.x+e.w/2,e.y+e.h/2,e.col,10);addParticles(e.x+e.w/2,e.y+e.h/2,e.col,22);checkRoomClear();}
         }
       }
     }
@@ -1734,7 +1740,7 @@ function draw(){
 
   // ── LAYER 0b: Far silhouette band (zone-specific, slow drift) ───────────
   x.save();
-  x.globalAlpha=0.13;
+  x.globalAlpha=0.18;
   x.fillStyle='#1a1630';
   const sDrift=(Date.now()*A.drift)%(W+200)-100;
   drawSilhouette(A.silhouette,sDrift);
@@ -1742,7 +1748,7 @@ function draw(){
 
   // ── LAYER 1: Atmospheric parallax (faint Gothic columns, mid depth) ─────
   x.save();
-  x.globalAlpha=0.18;
+  x.globalAlpha=0.25;
   x.fillStyle='#1a1428';
   const colDrift=(Date.now()*A.drift*1.6)%(10*S);
   for(const cx of [1.5,8,18,26,36,42]){
@@ -2199,10 +2205,10 @@ function draw(){
   // ── LAYER 7f: Dash afterimages (ghost trail) ────────────────────────────
   for(const a of P.afterimg){
     x.save();
-    x.globalAlpha=(a.life/10)*0.32;
-    x.shadowColor='#8855ff'; x.shadowBlur=8;
-    x.fillStyle='rgba(120,80,210,0.8)'; x.fillRect(a.x,a.y,P.w,P.h);
-    x.restore();
+    x.globalAlpha=(a.life/10)*0.44;
+    x.shadowColor='#9966ff'; x.shadowBlur=16;
+    x.fillStyle='rgba(145,95,228,0.88)'; x.fillRect(a.x,a.y,P.w,P.h);
+    x.shadowBlur=0; x.restore();
   }
 
   // ── LAYER 8: Player ─────────────────────────────────────────────────────
@@ -2211,8 +2217,8 @@ function draw(){
   // Wraith Step ghost tint
   if(P.wraith>0){ x.globalAlpha=(x.globalAlpha||1)*0.55; }
   // Landing squish — wider + shorter for a few frames
-  const sqK=P.squish/6;
-  const pw=P.w*(1+sqK*0.18), ph=P.h*(1-sqK*0.22);
+  const sqK=P.squish/9;
+  const pw=P.w*(1+sqK*0.28), ph=P.h*(1-sqK*0.35);
   const pX=P.x-(pw-P.w)/2, pY=P.y+(P.h-ph);
   // Shadow
   x.fillStyle='rgba(0,0,0,0.3)'; x.fillRect(pX+2,P.y+P.h,pw-4,5);
@@ -2259,7 +2265,7 @@ function draw(){
     x.fillStyle='#ffffff'; x.beginPath(); x.arc(tether.anchorX,tether.anchorY,5,0,7); x.fill();
     x.shadowBlur=0;
     x.restore();
-    addParticles(mx,my,'#9933cc',1); // trail sparks while pulling
+    addParticles(mx,my,'#9933cc',2); // trail sparks while pulling
   }
 
   // Wraith Step ghost overlay on player
@@ -2272,9 +2278,22 @@ function draw(){
 
   // ── LAYER 9: Particles ────────────────────────────────────────────────────
   for(const p of particles){
-    x.globalAlpha=Math.max(0,(p.life/p.maxLife)*0.9);
-    x.fillStyle=p.color;
-    x.fillRect(p.x-p.size*0.5,p.y-p.size*0.5,p.size,p.size);
+    const pa=Math.max(0,(p.life/p.maxLife)*0.9);
+    x.globalAlpha=pa;
+    if(p.glow){
+      // Soul motes / glow orbs — circular with bloom
+      x.shadowColor=p.color; x.shadowBlur=p.size*3.5;
+      x.fillStyle=p.color;
+      x.beginPath(); x.arc(p.x,p.y,p.size*0.65,0,7); x.fill();
+      // Inner bright core
+      x.globalAlpha=pa*0.7;
+      x.fillStyle='rgba(255,255,255,0.8)';
+      x.beginPath(); x.arc(p.x,p.y,p.size*0.22,0,7); x.fill();
+      x.shadowBlur=0;
+    } else {
+      x.fillStyle=p.color;
+      x.fillRect(p.x-p.size*0.5,p.y-p.size*0.5,p.size,p.size);
+    }
   }
   x.globalAlpha=1;
 
@@ -2287,7 +2306,7 @@ function draw(){
   x.globalAlpha=1;
 
   // ── LAYER 10: Dynamic lighting overlay ───────────────────────────────────
-  lc.fillStyle='rgba(3,2,8,0.86)';
+  lc.fillStyle='rgba(3,2,8,0.89)';
   lc.fillRect(0,0,W,H);
   lc.globalCompositeOperation='destination-out';
   // Torches
@@ -2306,11 +2325,45 @@ function draw(){
   slg.addColorStop(0,statue.used?'rgba(255,200,60,0.55)':'rgba(80,150,255,0.55)');
   slg.addColorStop(1,'transparent');
   lc.fillStyle=slg; lc.beginPath();lc.arc(statue.x+10,statue.y+10,sLr,0,7);lc.fill();
-  // Player ambient
-  const plr=28;
+  // Enemy threat light — faint red aura around living enemies (threat read in dark)
+  for(const e of enemies){
+    if(e.dead)continue;
+    const elg=lc.createRadialGradient(e.x+e.w/2,e.y+e.h/2,0,e.x+e.w/2,e.y+e.h/2,24);
+    elg.addColorStop(0,'rgba(255,30,30,0.16)'); elg.addColorStop(1,'transparent');
+    lc.fillStyle=elg; lc.beginPath(); lc.arc(e.x+e.w/2,e.y+e.h/2,24,0,7); lc.fill();
+  }
+  // Boss light (larger, zone-tinted)
+  if(boss&&!boss.dead){
+    const blg=lc.createRadialGradient(boss.x+boss.w/2,boss.y+boss.h/2,0,boss.x+boss.w/2,boss.y+boss.h/2,55);
+    blg.addColorStop(0,'rgba(160,50,255,0.22)'); blg.addColorStop(1,'transparent');
+    lc.fillStyle=blg; lc.beginPath(); lc.arc(boss.x+boss.w/2,boss.y+boss.h/2,55,0,7); lc.fill();
+  }
+  if(boss3&&!boss3.dead){
+    const blg3=lc.createRadialGradient(boss3.x+boss3.w/2,boss3.y+boss3.h/2,0,boss3.x+boss3.w/2,boss3.y+boss3.h/2,55);
+    blg3.addColorStop(0,'rgba(255,160,30,0.22)'); blg3.addColorStop(1,'transparent');
+    lc.fillStyle=blg3; lc.beginPath(); lc.arc(boss3.x+boss3.w/2,boss3.y+boss3.h/2,55,0,7); lc.fill();
+  }
+  // Projectile light — shots illuminate surroundings as they travel
+  for(const s of shots){
+    const slg=lc.createRadialGradient(s.x,s.y,0,s.x,s.y,30);
+    slg.addColorStop(0,'rgba(120,200,255,0.28)'); slg.addColorStop(1,'transparent');
+    lc.fillStyle=slg; lc.beginPath(); lc.arc(s.x,s.y,30,0,7); lc.fill();
+  }
+  // Player ambient — brightens when attacking
+  const plr=P.atk>6?46:32;
+  const plColInner=P.atk>6?'rgba(240,215,255,0.30)':'rgba(200,180,255,0.22)';
   const plg=lc.createRadialGradient(P.x+P.w/2,P.y+P.h/2,0,P.x+P.w/2,P.y+P.h/2,plr);
-  plg.addColorStop(0,'rgba(200,180,255,0.22)');plg.addColorStop(1,'transparent');
-  lc.fillStyle=plg; lc.beginPath();lc.arc(P.x+P.w/2,P.y+P.h/2,plr,0,7);lc.fill();
+  plg.addColorStop(0,plColInner); plg.addColorStop(1,'transparent');
+  lc.fillStyle=plg; lc.beginPath(); lc.arc(P.x+P.w/2,P.y+P.h/2,plr,0,7); lc.fill();
+  // Impact light pop — brief flash at hit position
+  if(hitLight&&hitLight.t>0){
+    const hlPct=hitLight.t/10;
+    const hlr=hitLight.r*hlPct;
+    const hlg=lc.createRadialGradient(hitLight.x,hitLight.y,0,hitLight.x,hitLight.y,hlr);
+    hlg.addColorStop(0,hitLight.col); hlg.addColorStop(1,'transparent');
+    lc.fillStyle=hlg; lc.beginPath(); lc.arc(hitLight.x,hitLight.y,hlr,0,7); lc.fill();
+    hitLight.t--;
+  }
   lc.globalCompositeOperation='source-over';
   // Composite onto main canvas
   x.globalCompositeOperation='multiply';
