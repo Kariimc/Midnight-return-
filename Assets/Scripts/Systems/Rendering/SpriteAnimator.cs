@@ -36,6 +36,30 @@ namespace MidnightReturn.Systems.Rendering
             }
         }
 
+        // Runtime atlas injection — mirrors EnemyBase.Configure / TileChunkBuilder.Configure.
+        // Lets code-authored content swap the sheet (and its texture) after Awake,
+        // which is required because _sheet is a private serialized field.
+        public void Configure(SpriteSheetDataSO sheet)
+        {
+            _sheet = sheet;
+
+            if (_renderer == null) _renderer = GetComponent<MeshRenderer>();
+            if (_mpb == null)      _mpb      = new MaterialPropertyBlock();
+
+            if (_sheet?.Sheet != null)
+            {
+                _renderer.GetPropertyBlock(_mpb);
+                _mpb.SetTexture(_texId, _sheet.Sheet);
+                _renderer.SetPropertyBlock(_mpb);
+            }
+
+            // Force the next Play() to re-apply, even if the clip name is unchanged.
+            _playing = false;
+            _current = default;
+        }
+
+        public SpriteSheetDataSO Sheet => _sheet;
+
         public void Play(string clipName)
         {
             if (_sheet == null || !_sheet.TryGetClip(clipName, out var clip)) return;

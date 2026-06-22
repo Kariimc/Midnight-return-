@@ -49,11 +49,18 @@ namespace MidnightReturn.Player
             {
                 "Idle"      => "Idle",
                 "Run"       => "Run",
+                "Walk"      => "Walk",      // Core sheet row 2
+                "Crouch"    => "Crouch",    // Core sheet row 4
                 "Jump"      => "Jump",
                 "Fall"      => "Fall",
                 "Dash"      => "Dash",
                 "WallSlide" => "WallSlide",
+                "Climb"     => "Climb",     // Core sheet row 16
+                "AirAttack" => "AirAttack", // dedicated AirAttackState
                 "Attack"    => ResolveAttack(),
+                // TurnAround / SubWeapon / DragonKick live on the ADVANCED atlas
+                // (a separate texture) — they fall back to Idle until that sheet
+                // is driven by a second animator. See PlayerSpriteBootstrap.
                 _           => "Idle",
             };
         }
