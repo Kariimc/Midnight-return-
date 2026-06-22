@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midnight Return — Sprite Pipeline Harness</title>
+<style>
+  :root {
+    --gold: #c9a84a; --gold-dim: #8a7430; --blood: #7a1320;
+    --stone: #14121a; --stone2: #1d1a26; --ink: #0a090d;
+    --ghost: #6f6a86; --text: #d8d2e6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(circle at 50% 0%, #1a1622 0%, var(--ink) 70%);
+    color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 18px; gap: 14px;
+  }
+  h1 {
+    font-size: 20px; letter-spacing: 3px; font-weight: 600;
+    color: var(--gold); text-transform: uppercase;
+    text-shadow: 0 0 18px rgba(201,168,74,.35);
+  }
+  h1 small { display:block; font-size: 11px; letter-spacing: 2px; color: var(--ghost); margin-top:4px; text-transform:none; }
+  .stage {
+    position: relative;
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px; overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,.7), inset 0 0 60px rgba(0,0,0,.6);
+    background:
+      linear-gradient(180deg, #16131d 0%, #0c0a10 100%);
+  }
+  canvas#game { display: block; image-rendering: pixelated; }
+  .hud {
+    position: absolute; top: 10px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    pointer-events: none; font-size: 12px;
+  }
+  .badge {
+    background: rgba(10,9,13,.72); border: 1px solid var(--gold-dim);
+    border-radius: 5px; padding: 6px 10px; line-height: 1.5;
+    backdrop-filter: blur(3px);
+  }
+  .badge b { color: var(--gold); }
+  .quad-flag { color: var(--ghost); }
+  .quad-flag.adv { color: #d8623a; font-weight: 700; }
+  .quad-flag.core { color: #4ab0d8; font-weight: 700; }
+
+  .panel {
+    width: min(960px, 100%);
+    background: linear-gradient(180deg, var(--stone2), var(--stone));
+    border: 1px solid #2a2536; border-radius: 8px;
+    padding: 14px 16px; display: grid; gap: 12px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .row .label { font-size: 11px; letter-spacing: 1px; color: var(--ghost); text-transform: uppercase; min-width: 92px; }
+  button, .filebtn {
+    background: linear-gradient(180deg, #2a2435, #1d1928);
+    color: var(--text); border: 1px solid #3a3450;
+    border-radius: 5px; padding: 7px 12px; font-size: 12px;
+    cursor: pointer; letter-spacing: .5px; transition: all .12s;
+  }
+  button:hover, .filebtn:hover { border-color: var(--gold); color: var(--gold); }
+  button.on { background: linear-gradient(180deg, var(--gold), var(--gold-dim)); color: #1a1410; border-color: var(--gold); font-weight: 700; }
+  button.adv { border-color: #6a2f1a; }
+  button.adv.on { background: linear-gradient(180deg, #d8623a, #7a2f12); color:#1a0f08; border-color:#d8623a; }
+  .filebtn input { display: none; }
+  .filebtn.loaded { border-color: #4a8a4a; color: #8fd88f; }
+  .keys { font-size: 11px; color: var(--ghost); line-height: 1.7; }
+  .keys kbd {
+    background:#0c0a10; border:1px solid #3a3450; border-bottom-width:2px;
+    border-radius:4px; padding:1px 6px; font-family:monospace; color:var(--gold); margin:0 1px;
+  }
+  .atlas-strip { display:flex; gap:6px; flex-wrap:wrap; }
+  .atlas-cell {
+    font-size:10px; padding:3px 7px; border-radius:4px; border:1px solid #2a2536;
+    color:var(--ghost); background:#0e0c13;
+  }
+  .atlas-cell.active { border-color: var(--gold); color: var(--gold); background:#1a1410; }
+  .note { font-size:11px; color:var(--ghost); line-height:1.6; }
+  .note b { color: var(--gold); }
+</style>
+</head>
+<body>
+  <h1>Midnight Return — Sprite Pipeline Harness
+    <small>in-browser mirror of PlayerSpriteController + PlayerSpriteBootstrap · Core ↔ Advanced quad switching</small>
+  </h1>
+
+  <div class="stage">
+    <canvas id="game" width="720" height="420"></canvas>
+    <div class="hud">
+      <div class="badge">
+        FSM state: <b id="hudState">Idle</b><br>
+        clip: <b id="hudClip">Idle</b> · frame <b id="hudFrame">0</b><br>
+        active quad: <span id="hudQuad" class="quad-flag core">CORE</span>
+      </div>
+      <div class="badge" style="text-align:right">
+        facing <b id="hudFace">→</b> · grounded <b id="hudGround">yes</b><br>
+        style <b id="hudStyle">v2</b> · source <b id="hudSrc">procedural</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <span class="label">Load sheets</span>
+      <label class="filebtn" id="lblCoreV1">Core v1<input type="file" accept="image/*" data-slot="coreV1"></label>
+      <label class="filebtn" id="lblCoreV2">Core v2<input type="file" accept="image/*" data-slot="coreV2"></label>
+      <label class="filebtn" id="lblAdvV1">Advanced v1<input type="file" accept="image/*" data-slot="advV1"></label>
+      <label class="filebtn" id="lblAdvV2">Advanced v2<input type="file" accept="image/*" data-slot="advV2"></label>
+      <span class="note">No PNG? It renders a <b>procedural Alucard</b> so the pipeline runs anyway.</span>
+    </div>
+
+    <div class="row">
+      <span class="label">Style</span>
+      <button id="styV1">v1 original</button>
+      <button id="styV2" class="on">v2 anime-samurai</button>
+      <span class="label" style="min-width:60px">Preview</span>
+      <button id="prevCore">cycle Core</button>
+      <button id="prevAdv" class="adv">cycle Advanced</button>
+      <button id="prevOff" class="on">gameplay</button>
+    </div>
+
+    <div class="row">
+      <span class="label">Core states</span>
+      <div class="atlas-strip" id="coreStrip"></div>
+    </div>
+    <div class="row">
+      <span class="label">Advanced</span>
+      <div class="atlas-strip" id="advStrip"></div>
+    </div>
+
+    <div class="keys">
+      <b style="color:var(--text)">Play:</b>
+      <kbd>←</kbd><kbd>→</kbd> move (hold lightly = Walk) ·
+      <kbd>Z</kbd>/<kbd>Space</kbd> jump ·
+      <kbd>↓</kbd> crouch ·
+      <kbd>J</kbd> attack combo ·
+      <kbd>K</kbd> sub-weapon <span class="quad-flag adv">[ADV]</span> ·
+      <kbd>L</kbd> dive / dragon-kick <span class="quad-flag adv">[ADV]</span> ·
+      turn quickly = TurnAround <span class="quad-flag adv">[ADV]</span> ·
+      <kbd>Tab</kbd> cycle style
+    </div>
+    <div class="note">
+      The <b>orange [ADV]</b> states render off the second quad fed the Advanced atlas — exactly like
+      <b>PlayerSpriteController.AdvancedStates</b> toggling <b>_advRenderer</b> in Unity. Clip maps
+      (Columns/Rows/StartFrame/Fps) are copied verbatim from <b>PlayerSpriteContent.cs</b>.
+    </div>
+  </div>
+
+<script>
+//═══════════════════════════════════════════════════════════════════════════
+//  CLIP MAPS — copied verbatim from PlayerSpriteContent.cs
+//═══════════════════════════════════════════════════════════════════════════
+const CORE_COLUMNS = 10, CORE_ROWS = 16;
+const ADV_COLUMNS  = 8,  ADV_ROWS  = 10;
+
+// [name, startFrame, frameCount, fps, loop]
+const CORE_CLIPS = [
+  ["Idle",      0*CORE_COLUMNS, 8,  8,  true ],
+  ["Walk",      1*CORE_COLUMNS, 10, 10, true ],
+  ["Run",       2*CORE_COLUMNS, 8,  12, true ],
+  ["Crouch",    3*CORE_COLUMNS, 4,  8,  true ],
+  ["Jump",      4*CORE_COLUMNS, 6,  12, false],
+  ["JumpApex",  5*CORE_COLUMNS, 4,  10, true ],
+  ["Fall",      6*CORE_COLUMNS, 6,  10, true ],
+  ["Dash",      7*CORE_COLUMNS, 6,  16, true ],
+  ["WallSlide", 8*CORE_COLUMNS, 6,  8,  true ],
+  ["Attack1",   9*CORE_COLUMNS, 6,  14, false],
+  ["Attack2",  10*CORE_COLUMNS, 6,  14, false],
+  ["Attack3",  11*CORE_COLUMNS, 8,  16, false],
+  ["AirAttack",12*CORE_COLUMNS, 6,  14, false],
+  ["Hurt",     13*CORE_COLUMNS, 4,  10, false],
+  ["Death",    14*CORE_COLUMNS, 8,  10, false],
+  ["Climb",    15*CORE_COLUMNS, 8,  8,  true ],
+];
+const ADV_CLIPS = [
+  ["TurnAround", 0*ADV_COLUMNS, 6, 16, false],
+  ["BackDash",   1*ADV_COLUMNS, 8, 18, false],
+  ["SubWeapon",  2*ADV_COLUMNS, 8, 16, false],
+  ["SpellCast",  3*ADV_COLUMNS, 8, 12, false],
+  ["DragonKick", 4*ADV_COLUMNS, 8, 16, false],
+  ["DoubleJump", 5*ADV_COLUMNS, 8, 14, false],
+  ["AirDash",    6*ADV_COLUMNS, 6, 18, true ],
+  ["Landing",    7*ADV_COLUMNS, 5, 14, false],
+  ["WallJump",   8*ADV_COLUMNS, 6, 14, false],
+  ["KneelSave",  9*ADV_COLUMNS, 6, 8,  false],
+];
+// FSM states that route to the Advanced quad — mirrors PlayerSpriteController.AdvancedStates
+const ADVANCED_STATES = new Set(["TurnAround","SubWeapon","DragonKick"]);
+
+const coreClip = n => CORE_CLIPS.find(c => c[0] === n);
+const advClip  = n => ADV_CLIPS.find(c => c[0] === n);
+
+//═══════════════════════════════════════════════════════════════════════════
+//  ATLAS — wraps a loaded image OR procedural fallback; samples a frame
+//═══════════════════════════════════════════════════════════════════════════
+class Atlas {
+  constructor(cols, rows, clips) { this.cols=cols; this.rows=rows; this.clips=clips; this.img=null; }
+  set(img){ this.img = img; }
+  get loaded(){ return !!this.img; }
+  // draw absFrame centred in dest box (dx,dy = top-left, dw,dh = size), flipX
+  drawFrame(ctx, abs, dx, dy, dw, dh, flipX) {
+    if (!this.img) return false;
+    const fw = this.img.width / this.cols, fh = this.img.height / this.rows;
+    const col = abs % this.cols, row = Math.floor(abs / this.cols);
+    ctx.save();
+    if (flipX) { ctx.translate(dx+dw, dy); ctx.scale(-1,1); }
+    else       { ctx.translate(dx, dy); }
+    ctx.drawImage(this.img, col*fw, row*fh, fw, fh, 0, 0, dw, dh);
+    ctx.restore();
+    return true;
+  }
+}
+
+//═══════════════════════════════════════════════════════════════════════════
+//  SpriteAnimator — mirror of SpriteAnimator.cs (timer/frame advance)
+//═══════════════════════════════════════════════════════════════════════════
+class SpriteAnimator {
+  constructor(atlas){ this.atlas=atlas; this.clip=null; this.frame=0; this.timer=0; this.playing=false; }
+  play(clip){
+    if (!clip) return;
+    if (this.playing && this.clip && this.clip[0]===clip[0]) return;
+    this.clip=clip; this.frame=0; this.timer=0; this.playing=true;
+  }
+  tick(dt){
+    if (!this.playing || !this.clip) return;
+    const [,, count, fps, loop] = this.clip;
+    const spf = 1/Math.max(1,fps);
+    this.timer += dt;
+    while (this.timer >= spf){
+      this.timer -= spf; this.frame++;
+      if (this.frame >= count){ if (loop) this.frame=0; else { this.frame=count-1; this.playing=false; } }
+    }
+  }
+  get absFrame(){ return this.clip ? this.clip[1] + this.frame : 0; }
+}
+
+//═══════════════════════════════════════════════════════════════════════════
+//  Assets
+//═══════════════════════════════════════════════════════════════════════════
+const coreAtlas = new Atlas(CORE_COLUMNS, CORE_ROWS, CORE_CLIPS);
+const advAtlas  = new Atlas(ADV_COLUMNS,  ADV_ROWS,  ADV_CLIPS);
+const coreAnim  = new SpriteAnimator(coreAtlas);
+const advAnim   = new SpriteAnimator(advAtlas);
+
+// style → which loaded image each atlas uses
+const images = { coreV1:null, coreV2:null, advV1:null, advV2:null };
+let style = 'v2';           // 'v1' | 'v2'
+let previewMode = 'off';    // 'off' | 'core' | 'adv'
+
+function applyStyle(){
+  coreAtlas.set(style==='v2' ? images.coreV2 : images.coreV1);
+  advAtlas.set (style==='v2' ? images.advV2  : images.advV1);
+  document.getElementById('hudStyle').textContent = style;
+  const anyImg = coreAtlas.loaded || advAtlas.loaded;
+  document.getElementById('hudSrc').textContent = anyImg ? 'PNG' : 'procedural';
+}
+
+//═══════════════════════════════════════════════════════════════════════════
+//  PLAYER — tiny platformer to drive FSM states (mirror of the Unity FSM intent)
+//═══════════════════════════════════════════════════════════════════════════
+const GROUND_Y = 340;
+const P = {
+  x: 360, y: GROUND_Y, vx: 0, vy: 0,
+  facing: 1, grounded: true,
+  state: "Idle", combo: 0,
+  // one-shot timers for advanced/attack states
+  lock: 0,           // seconds the current non-loop state is locked
+  lockState: null,
+};
+const keys = {};
+addEventListener('keydown', e=>{
+  if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space","Tab"].includes(e.code)) e.preventDefault();
+  if (e.code==='Tab'){ style = style==='v2'?'v1':'v2'; syncStyleButtons(); applyStyle(); return; }
+  if (!keys[e.code]) onPress(e.code);
+  keys[e.code]=true;
+});
+addEventListener('keyup', e=>{ keys[e.code]=false; });
+
+function lockState(name, secs){ P.lockState=name; P.lock=secs; P.state=name; }
+
+function onPress(code){
+  if (P.lock>0 && P.state!=='Run' && P.state!=='Walk') {/* still allow buffering */}
+  switch(code){
+    case 'KeyJ': // attack combo
+      if (P.grounded){ P.combo=(P.combo+1)%3; const c=[0.42,0.42,0.55][P.combo]; lockState("Attack",c); }
+      else lockState("AirAttack",0.42);
+      break;
+    case 'KeyK': // sub-weapon  → ADVANCED quad
+      lockState("SubWeapon", 0.5);
+      break;
+    case 'KeyL': // dragon kick dive → ADVANCED quad (needs air)
+      if (!P.grounded){ lockState("DragonKick",0.6); P.vy=4.5; }
+      break;
+    case 'Space': case 'KeyZ': case 'ArrowUp':
+      if (P.grounded){ P.vy=-9.4; P.grounded=false; }
+      break;
+  }
+}
+
+let lastFace = 1;
+function updatePlayer(dt){
+  // lock timer (attacks / advanced one-shots hold the state)
+  if (P.lock>0){
+    P.lock -= dt;
+    if (P.state==='DragonKick'){ // dive fast
+      P.y += 9 * 60 * dt; P.vy=0;
+      if (P.y>=GROUND_Y){ P.y=GROUND_Y; P.grounded=true; P.lock=0; }
+    }
+    if (P.lock<=0){ P.lockState=null; }
+  }
+
+  const left = keys['ArrowLeft'], right=keys['ArrowRight'], down=keys['ArrowDown'];
+  const moving = (left||right);
+  const locked = P.lock>0;
+
+  // horizontal
+  if (!locked){
+    const speed = down ? 0 : 3.4*60*dt;
+    if (left){ P.vx=-speed; P.facing=-1; }
+    else if (right){ P.vx=speed; P.facing=1; }
+    else P.vx=0;
+  } else P.vx*=0.8;
+  P.x += P.vx; P.x = Math.max(40, Math.min(680, P.x));
+
+  // gravity
+  if (!P.grounded && P.state!=='DragonKick'){
+    P.vy += 26*dt; P.y += P.vy*60*dt;
+    if (P.y>=GROUND_Y){ P.y=GROUND_Y; P.vy=0; P.grounded=true;
+      if (!locked) P.state='Idle'; }
+  }
+
+  // turn-around detection (facing flipped while grounded & moving) → ADVANCED
+  if (!locked && P.grounded && P.facing!==lastFace && moving){
+    lockState("TurnAround", 0.18);
+  }
+  lastFace = P.facing;
+
+  // resolve state when not locked
+  if (!locked){
+    if (!P.grounded){
+      P.state = P.vy < -1 ? "Jump" : (Math.abs(P.vy)<1 ? "JumpApex" : "Fall");
+    } else if (down){
+      P.state = "Crouch";
+    } else if (moving){
+      // light hold = Walk, full = Run (mirror WalkState demotion at <0.6)
+      P.state = "Run";
+    } else {
+      P.state = "Idle";
+    }
+  }
+
+  // map combo state name → core clip
+  // (Attack handled in render via combo)
+}
+
+//═══════════════════════════════════════════════════════════════════════════
+//  STATE → CLIP routing — mirror of PlayerSpriteController.ResolveClip
+//═══════════════════════════════════════════════════════════════════════════
+function resolveCoreClip(state){
+  switch(state){
+    case 'Idle': return coreClip('Idle');
+    case 'Run': return coreClip('Run');
+    case 'Walk': return coreClip('Walk');
+    case 'Crouch': return coreClip('Crouch');
+    case 'Jump': return coreClip('Jump');
+    case 'JumpApex': return coreClip('JumpApex');
+    case 'Fall': return coreClip('Fall');
+    case 'Dash': return coreClip('Dash');
+    case 'WallSlide': return coreClip('WallSlide');
+    case 'Climb': return coreClip('Climb');
+    case 'AirAttack': return coreClip('AirAttack');
+    case 'Attack': return coreClip(['Attack1','Attack2','Attack3'][P.combo]);
+    default: return coreClip('Idle');
+  }
+}
+
+//═══════════════════════════════════════════════════════════════════════════
+//  PROCEDURAL ALUCARD — fallback frame painter (so it works with no PNG)
+//═══════════════════════════════════════════════════════════════════════════
+function drawProcedural(ctx, state, clipName, frame, count, x, y, facing){
+  const t = count>1 ? frame/(count-1) : 0;
+  const bob = Math.sin(frame*0.9)*2;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing, 1);
+
+  const isAdv = ADVANCED_STATES.has(state);
+  // pose offsets per state family
+  let lean=0, crouch=0, armSwing=0, kick=0, legSplit=14, capeFlare=0;
+  if (state==='Run'||state==='Walk'){ lean=6; legSplit=20+Math.sin(frame)*8; capeFlare=10; }
+  if (state==='Jump'||state==='JumpApex'){ crouch=-6; legSplit=10; capeFlare=14; }
+  if (state==='Fall'){ legSplit=8; capeFlare=18; }
+  if (state==='Crouch'){ crouch=18; legSplit=22; }
+  if (state==='Attack'){ armSwing=40*Math.sin(t*Math.PI); lean=8; }
+  if (state==='AirAttack'){ armSwing=46*Math.sin(t*Math.PI); crouch=-4; }
+  if (state==='SubWeapon'){ armSwing=-30+60*t; lean=4; }
+  if (state==='DragonKick'){ kick=46; crouch=10; lean=14; capeFlare=24; }
+  if (state==='TurnAround'){ lean=-6+12*t; }
+
+  // cape (opposes motion — flares behind)
+  ctx.fillStyle = '#5a0e18';
+  ctx.beginPath();
+  ctx.moveTo(-6, -54+crouch);
+  ctx.quadraticCurveTo(-26-capeFlare, -20+bob, -10-capeFlare*0.4, 26+crouch);
+  ctx.lineTo(4, 24+crouch);
+  ctx.quadraticCurveTo(-4, -10, 2, -50+crouch);
+  ctx.closePath(); ctx.fill();
+
+  // legs
+  ctx.strokeStyle = '#1a1a22'; ctx.lineWidth=7; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(0, 0+crouch);
+  ctx.lineTo(-legSplit*0.4, 30+crouch);
+  ctx.moveTo(0, 0+crouch);
+  if (kick) ctx.lineTo(legSplit*0.5+kick, 6+crouch);
+  else ctx.lineTo(legSplit*0.5, 30+crouch);
+  ctx.stroke();
+
+  // torso (dark plate)
+  ctx.fillStyle = '#23232e';
+  ctx.fillRect(-9, -52+crouch+lean*0.2, 18, 54);
+  // blue chest gem
+  ctx.fillStyle = '#3aa6ff';
+  ctx.beginPath(); ctx.arc(0,-34+crouch,4,0,7); ctx.fill();
+  ctx.fillStyle='rgba(120,200,255,.5)';
+  ctx.beginPath(); ctx.arc(0,-34+crouch,7,0,7); ctx.fill();
+
+  // head + silver-white hair
+  ctx.fillStyle='#e8e2d0';
+  ctx.beginPath(); ctx.arc(2, -62+crouch+bob*0.3, 8, 0, 7); ctx.fill();
+  ctx.fillStyle='#f4f1e8';
+  ctx.beginPath();
+  ctx.moveTo(-6,-66+crouch); ctx.quadraticCurveTo(-16,-44+crouch,-4,-40+crouch);
+  ctx.lineTo(2,-58+crouch); ctx.closePath(); ctx.fill();
+
+  // sword arm + ornate broadsword
+  ctx.save();
+  ctx.translate(6, -40+crouch);
+  ctx.rotate((armSwing-10)*Math.PI/180);
+  ctx.strokeStyle='#23232e'; ctx.lineWidth=6;
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(16,4); ctx.stroke();
+  // blade
+  ctx.strokeStyle='#cfe6ff'; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(16,4); ctx.lineTo(54,-6); ctx.stroke();
+  ctx.fillStyle='#3aa6ff'; // crossguard gem
+  ctx.beginPath(); ctx.arc(18,4,3,0,7); ctx.fill();
+  // motion-blur arc for attack/advanced
+  if (state==='Attack'||state==='AirAttack'||state==='DragonKick'){
+    ctx.strokeStyle='rgba(180,220,255,'+(0.5*(1-Math.abs(t-0.5)*2))+')';
+    ctx.lineWidth=10; ctx.beginPath(); ctx.arc(8,2,46,-0.8,0.8); ctx.stroke();
+  }
+  ctx.restore();
+
+  // afterimage / speed lines for advanced quad
+  if (isAdv){
+    ctx.strokeStyle='rgba(216,98,58,.4)'; ctx.lineWidth=2;
+    for(let i=1;i<=3;i++){ ctx.beginPath(); ctx.moveTo(-30-i*10,-30+i*8); ctx.lineTo(-10-i*10,-30+i*8); ctx.stroke(); }
+  }
+  ctx.restore();
+}
+
+//═══════════════════════════════════════════════════════════════════════════
+//  RENDER LOOP
+//═══════════════════════════════════════════════════════════════════════════
+const cv = document.getElementById('game'), ctx = cv.getContext('2d');
+let last = performance.now();
+
+function frame(now){
+  const dt = Math.min(0.05,(now-last)/1000); last=now;
+
+  if (previewMode==='off') updatePlayer(dt);
+
+  // ── decide active quad (mirror PlayerSpriteController.LateUpdate) ──────────
+  let useAdv, clip, activeAnim, state;
+  if (previewMode==='core'){ useAdv=false; state='[preview]'; }
+  else if (previewMode==='adv'){ useAdv=true; state='[preview]'; }
+  else { state=P.state; useAdv = ADVANCED_STATES.has(state); }
+
+  if (previewMode==='off'){
+    if (useAdv){ clip = advClip(state); advAnim.play(clip); activeAnim=advAnim; }
+    else       { clip = resolveCoreClip(state); coreAnim.play(clip); activeAnim=coreAnim; }
+  } else {
+    activeAnim = useAdv ? advAnim : coreAnim; clip = activeAnim.clip;
+  }
+
+  coreAnim.tick(dt); advAnim.tick(dt);
+
+  // ── draw scene ────────────────────────────────────────────────────────────
+  ctx.clearRect(0,0,cv.width,cv.height);
+  // backdrop
+  const g=ctx.createLinearGradient(0,0,0,cv.height);
+  g.addColorStop(0,'#1a1622'); g.addColorStop(1,'#0a090d');
+  ctx.fillStyle=g; ctx.fillRect(0,0,cv.width,cv.height);
+  // floor
+  ctx.fillStyle='#14121a'; ctx.fillRect(0,GROUND_Y+30,cv.width,cv.height);
+  ctx.strokeStyle='#2a2536'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,GROUND_Y+30); ctx.lineTo(cv.width,GROUND_Y+30); ctx.stroke();
+  // torch glow
+  const tg=ctx.createRadialGradient(P.x,P.y-40,10,P.x,P.y-40,220);
+  tg.addColorStop(0,'rgba(201,168,74,.12)'); tg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=tg; ctx.fillRect(0,0,cv.width,cv.height);
+
+  // ── draw player (PNG atlas if loaded, else procedural) ────────────────────
+  const drawX = previewMode==='off' ? P.x : cv.width/2;
+  const drawY = previewMode==='off' ? P.y : 300;
+  const flip  = previewMode==='off' ? P.facing<0 : false;
+  const dw=120, dh=120;
+  const atlas = useAdv ? advAtlas : coreAtlas;
+  const drawn = clip && atlas.drawFrame(ctx, activeAnim.absFrame,
+                  drawX - dw/2, drawY - dh + 30, dw, dh, flip);
+  if (!drawn && clip){
+    drawProcedural(ctx, previewMode==='off'?state:clip[0], clip[0],
+                   activeAnim.frame, clip[2], drawX, drawY, previewMode==='off'?P.facing:1);
+  }
+
+  // ── HUD ───────────────────────────────────────────────────────────────────
+  document.getElementById('hudState').textContent = previewMode==='off'?P.state:('preview:'+(useAdv?'ADV':'Core'));
+  document.getElementById('hudClip').textContent  = clip?clip[0]:'—';
+  document.getElementById('hudFrame').textContent = activeAnim?activeAnim.frame:0;
+  document.getElementById('hudFace').textContent  = P.facing<0?'←':'→';
+  document.getElementById('hudGround').textContent= P.grounded?'yes':'no';
+  const qf=document.getElementById('hudQuad');
+  qf.textContent = useAdv?'ADVANCED':'CORE';
+  qf.className = 'quad-flag '+(useAdv?'adv':'core');
+
+  // highlight active atlas cells
+  highlightStrips(clip?clip[0]:null, useAdv);
+
+  requestAnimationFrame(frame);
+}
+
+//═══════════════════════════════════════════════════════════════════════════
+//  UI wiring
+//═══════════════════════════════════════════════════════════════════════════
+function buildStrips(){
+  const cs=document.getElementById('coreStrip'), as=document.getElementById('advStrip');
+  CORE_CLIPS.forEach(c=>{ const d=document.createElement('span'); d.className='atlas-cell'; d.dataset.c=c[0]; d.dataset.k='core'; d.textContent=c[0]; cs.appendChild(d); });
+  ADV_CLIPS.forEach(c=>{ const d=document.createElement('span'); d.className='atlas-cell'; d.dataset.c=c[0]; d.dataset.k='adv'; d.textContent=c[0]+(ADVANCED_STATES.has(c[0])?' ●':''); as.appendChild(d); });
+}
+function highlightStrips(name, useAdv){
+  document.querySelectorAll('.atlas-cell').forEach(d=>{
+    const on = d.dataset.c===name && ((useAdv&&d.dataset.k==='adv')||(!useAdv&&d.dataset.k==='core'));
+    d.classList.toggle('active', on);
+  });
+}
+function syncStyleButtons(){
+  document.getElementById('styV1').classList.toggle('on', style==='v1');
+  document.getElementById('styV2').classList.toggle('on', style==='v2');
+}
+function syncPreviewButtons(){
+  document.getElementById('prevCore').classList.toggle('on', previewMode==='core');
+  document.getElementById('prevAdv').classList.toggle('on', previewMode==='adv');
+  document.getElementById('prevOff').classList.toggle('on', previewMode==='off');
+}
+
+document.getElementById('styV1').onclick=()=>{style='v1';syncStyleButtons();applyStyle();};
+document.getElementById('styV2').onclick=()=>{style='v2';syncStyleButtons();applyStyle();};
+document.getElementById('prevCore').onclick=()=>{previewMode='core';coreAnim.play(coreClip('Idle'));syncPreviewButtons();};
+document.getElementById('prevAdv').onclick =()=>{previewMode='adv'; advAnim.play(advClip('TurnAround'));syncPreviewButtons();};
+document.getElementById('prevOff').onclick =()=>{previewMode='off';syncPreviewButtons();};
+
+// preview auto-cycle
+let cycleClock=0, cycleIdx=0;
+setInterval(()=>{
+  if (previewMode==='core'){ cycleIdx=(cycleIdx+1)%CORE_CLIPS.length; coreAnim.play(CORE_CLIPS[cycleIdx]); }
+  else if (previewMode==='adv'){ cycleIdx=(cycleIdx+1)%ADV_CLIPS.length; advAnim.play(ADV_CLIPS[cycleIdx]); }
+}, 1500);
+
+// file loaders
+document.querySelectorAll('.filebtn input').forEach(inp=>{
+  inp.addEventListener('change', e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const slot=e.target.dataset.slot;
+    const img=new Image();
+    img.onload=()=>{ images[slot]=img; applyStyle();
+      const lbl={coreV1:'lblCoreV1',coreV2:'lblCoreV2',advV1:'lblAdvV1',advV2:'lblAdvV2'}[slot];
+      document.getElementById(lbl).classList.add('loaded');
+    };
+    img.src=URL.createObjectURL(f);
+  });
+});
+
+buildStrips();
+syncStyleButtons();
+syncPreviewButtons();
+applyStyle();
+coreAnim.play(coreClip('Idle'));
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
