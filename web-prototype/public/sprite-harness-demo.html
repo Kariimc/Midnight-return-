@@ -584,6 +584,30 @@ document.querySelectorAll('.filebtn input').forEach(inp=>{
   });
 });
 
+// Auto-load PNGs from Assets/Art/Reference/Player/ if they exist.
+// Works with file:// and any local server — Image.src doesn't require
+// CORS headers for local paths.  Silent fail = stay on procedural.
+const AUTO_PATHS = {
+  coreV1: '../../Assets/Art/Reference/Player/Alucard_Core_v1.png',
+  coreV2: '../../Assets/Art/Reference/Player/Alucard_Core_v2.png',
+  advV1:  '../../Assets/Art/Reference/Player/Alucard_Advanced_v1.png',
+  advV2:  '../../Assets/Art/Reference/Player/Alucard_Advanced_v2.png',
+};
+const LBL_IDS = {coreV1:'lblCoreV1',coreV2:'lblCoreV2',advV1:'lblAdvV1',advV2:'lblAdvV2'};
+let autoLoaded = 0;
+Object.entries(AUTO_PATHS).forEach(([slot, path])=>{
+  const img = new Image();
+  img.onload = ()=>{
+    images[slot] = img;
+    document.getElementById(LBL_IDS[slot]).classList.add('loaded');
+    autoLoaded++;
+    applyStyle();
+    document.getElementById('hudSrc').textContent = 'PNG';
+  };
+  img.onerror = ()=>{}; // silently stay on procedural
+  img.src = path;
+});
+
 buildStrips();
 syncStyleButtons();
 syncPreviewButtons();
