@@ -1,0 +1,51 @@
+name: Unity EditMode Tests
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    branches: [main, "claude/**"]
+  workflow_dispatch:
+
+jobs:
+  editmode-tests:
+    name: EditMode Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Speeds up the (very slow) first Unity import by caching the generated Library.
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-
+
+      - name: Run EditMode tests
+        uses: game-ci/unity-test-runner@v4
+        # Requires the UNITY_LICENSE repository secret. Without it, this step
+        # fails during license activation (NOT on the test code itself).
+        # See https://game.ci/docs/github/activation to generate the license.
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          testMode: EditMode
+          # No ProjectSettings/ProjectVersion.txt in the repo, so the version must be
+          # set explicitly. HDRP 16.0.6 ships with Unity 2023.2 — adjust the patch if needed.
+          unityVersion: 2023.2.20f1
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          artifactsPath: editmode-artifacts
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EditMode-results
+          path: editmode-artifacts
