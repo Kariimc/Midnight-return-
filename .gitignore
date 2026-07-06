@@ -3,3 +3,17 @@ dist/
 .DS_Store
 *.log
 .claude/
+
+# Unity generated (created on first open in the editor)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+*.csproj
+*.sln
+*.unityproj
+*.pidb
+*.booproj
