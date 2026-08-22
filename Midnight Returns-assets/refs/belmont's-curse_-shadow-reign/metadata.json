@@ -1,0 +1,6 @@
+{
+  "name": "Midnight Returns",
+  "description": "An advanced, high-fidelity dark fantasy 2D Action Metroidvania featuring responsive movement, dynamic equipment visuals, particle magic, interconnected zones, deep progression, and intense boss battles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
